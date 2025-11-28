@@ -8,9 +8,10 @@ Unity Editor を外部から制御するCLIツール。
 
 > Note: Unity Editor側で [unity-mcp](https://github.com/CoplayDev/unity-mcp) パッケージがインストールされ、MCPブリッジが起動している必要があります。
 
-## バージョン
+## 動作要件
 
-本ツールのバージョンは [CoplayDev/unity-mcp](https://github.com/CoplayDev/unity-mcp) に準拠します。
+- Python 3.8+
+- [CoplayDev/unity-mcp](https://github.com/CoplayDev/unity-mcp) >= 8.1.0
 
 ## 制限事項
 
@@ -64,12 +65,12 @@ unity-mcp verify
 
 ## オプション
 
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `--port` | MCPサーバーポート | 6400 |
-| `--host` | MCPサーバーホスト | localhost |
-| `--count` | 取得するログ件数 | 20 |
-| `--types` | ログタイプ（error, warning, log） | error warning |
+| オプション | 説明                              | デフォルト    |
+| ---------- | --------------------------------- | ------------- |
+| `--port`   | MCPサーバーポート                 | 6400          |
+| `--host`   | MCPサーバーホスト                 | localhost     |
+| `--count`  | 取得するログ件数                  | 20            |
+| `--types`  | ログタイプ（error, warning, log） | error warning |
 
 ```bash
 # 例: ポート6401でエラーのみ50件取得
