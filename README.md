@@ -24,6 +24,7 @@ MCPサーバー経由ではなく直接通信する理由:
 
 ## 動作要件
 
+- [uvx](https://docs.astral.sh/uv/guides/tools/)
 - Python 3.11+
 - [CoplayDev/unity-mcp](https://github.com/CoplayDev/unity-mcp) >= 8.1.0
 
@@ -35,16 +36,11 @@ MCPサーバー経由ではなく直接通信する理由:
 ## インストール
 
 ```bash
-# uv でグローバルインストール（推奨）
-uv tool install git+https://github.com/bigdra50/unity-mcp-client
-
-# または uvx でインストールなしで実行
+# uvx でインストールなしで実行（推奨）
 uvx --from git+https://github.com/bigdra50/unity-mcp-client unity-mcp state
 
-# ローカルからインストール
-git clone https://github.com/bigdra50/unity-mcp-client
-cd unity-mcp-client
-uv tool install .
+# グローバルインストールする場合
+uv tool install git+https://github.com/bigdra50/unity-mcp-client
 ```
 
 ## 使い方
