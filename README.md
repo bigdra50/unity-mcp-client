@@ -76,11 +76,31 @@ unity-mcp tests play
 # ビルド検証（リフレッシュ→クリア→コンパイル待機→コンソール確認）
 unity-mcp verify
 unity-mcp verify --timeout 120 --connection-timeout 60
+
+# シーン操作
+unity-mcp scene active          # アクティブシーン情報
+unity-mcp scene hierarchy       # シーン階層
+unity-mcp scene build-settings  # ビルド設定のシーン一覧
+unity-mcp scene load --name MainScene
+unity-mcp scene load --path Assets/Scenes/Level1.unity
+unity-mcp scene save
+unity-mcp scene create --name NewScene --path Assets/Scenes
 ```
 
 ## 設定ファイル
 
 `.unity-mcp.toml` をカレントディレクトリまたはUnityプロジェクトルートに配置することで、デフォルト値を設定できます。
+
+```bash
+# デフォルト設定ファイルを生成
+unity-mcp config init
+
+# 出力先を指定
+unity-mcp config init --output my-config.toml
+
+# 既存ファイルを上書き
+unity-mcp config init --force
+```
 
 ```toml
 # .unity-mcp.toml
@@ -127,6 +147,14 @@ log_count = 20
 | `--timeout` | コンパイル待機の最大秒数 | 60 |
 | `--connection-timeout` | TCP接続タイムアウト（秒） | 30.0 |
 | `--retry` | 接続失敗時のリトライ回数 | 3 |
+
+### scene専用オプション
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `--name` | シーン名（create/load） | - |
+| `--path` | シーンパス（create/load/save） | - |
+| `--build-index` | ビルドインデックス（load） | - |
 
 ```bash
 # 例: ポート6401でエラーのみ50件取得
