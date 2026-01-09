@@ -497,8 +497,34 @@ class GameObjectAPI:
 
     def find(self, search_method: str = "by_name", search_term: Optional[str] = None,
              target: Optional[str] = None, find_all: bool = False,
-             search_inactive: bool = False) -> Dict[str, Any]:
-        """Find GameObject(s)"""
+             search_inactive: bool = False,
+             page_size: Optional[int] = None,
+             page: Optional[int] = None,
+             offset: Optional[int] = None,
+             cursor: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Find GameObject(s) with pagination support
+
+        Args:
+            search_method: Search method (default: "by_name")
+            search_term: Search keyword
+            target: Target name (alternative to search_term)
+            find_all: Find all matching objects
+            search_inactive: Include inactive GameObjects
+            page_size: Items per page (1-500, default: 50)
+            page: Page number (for page-based pagination)
+            offset: Offset value (for offset-based pagination)
+            cursor: Cursor value (for cursor-based pagination)
+
+        Returns:
+            Dict containing:
+                - instanceIDs: List of instance IDs
+                - pageSize: Actual items returned
+                - cursor: Current cursor
+                - nextCursor: Next page cursor
+                - totalCount: Total matching items
+                - hasMore: Whether more items exist
+        """
         params = {"action": "find", "searchMethod": search_method, "findAll": find_all}
         if search_term:
             params["searchTerm"] = search_term
@@ -506,6 +532,14 @@ class GameObjectAPI:
             params["target"] = target
         if search_inactive:
             params["searchInactive"] = search_inactive
+        if page_size is not None:
+            params["pageSize"] = page_size
+        if page is not None:
+            params["page"] = page
+        if offset is not None:
+            params["offset"] = offset
+        if cursor is not None:
+            params["cursor"] = cursor
 
         return self._conn.send_command("manage_gameobject", params)
 
@@ -572,9 +606,54 @@ class SceneAPI:
 
         return self._conn.send_command("manage_scene", params)
 
-    def get_hierarchy(self) -> Dict[str, Any]:
-        """Get scene hierarchy"""
-        return self._conn.send_command("manage_scene", {"action": "get_hierarchy"})
+    def get_hierarchy(self,
+                      page_size: Optional[int] = None,
+                      cursor: Optional[int] = None,
+                      max_nodes: Optional[int] = None,
+                      max_depth: Optional[int] = None,
+                      max_children_per_node: Optional[int] = None,
+                      parent: Optional[Any] = None,
+                      include_transform: Optional[bool] = None) -> Dict[str, Any]:
+        """
+        Get scene hierarchy with pagination support
+
+        Args:
+            page_size: Items per page (1-500, default: 50)
+            cursor: Starting position (default: 0)
+            max_nodes: Total node limit (1-5000, default: 1000)
+            max_depth: Depth limit (for future compatibility)
+            max_children_per_node: Children per node limit (0-2000, default: 200)
+            parent: Parent object to query from (null = roots)
+            include_transform: Include transform information
+
+        Returns:
+            Dict containing:
+                - scope: "roots" or "children"
+                - cursor: Current cursor position
+                - pageSize: Actual items returned
+                - next_cursor: Next page cursor (null if finished)
+                - truncated: Whether more items exist
+                - total: Total available items
+                - items: List of GameObject summaries
+        """
+        params = {"action": "get_hierarchy"}
+
+        if page_size is not None:
+            params["page_size"] = page_size
+        if cursor is not None:
+            params["cursor"] = cursor
+        if max_nodes is not None:
+            params["max_nodes"] = max_nodes
+        if max_depth is not None:
+            params["max_depth"] = max_depth
+        if max_children_per_node is not None:
+            params["max_children_per_node"] = max_children_per_node
+        if parent is not None:
+            params["parent"] = parent
+        if include_transform is not None:
+            params["include_transform"] = include_transform
+
+        return self._conn.send_command("manage_scene", params)
 
     def get_active(self) -> Dict[str, Any]:
         """Get active scene info"""
@@ -583,6 +662,57 @@ class SceneAPI:
     def get_build_settings(self) -> Dict[str, Any]:
         """Get build settings (scenes in build)"""
         return self._conn.send_command("manage_scene", {"action": "get_build_settings"})
+
+    def iterate_hierarchy(self,
+                         page_size: int = 50,
+                         max_nodes: Optional[int] = None,
+                         max_children_per_node: Optional[int] = None,
+                         parent: Optional[Any] = None,
+                         include_transform: Optional[bool] = None):
+        """
+        Iterate through entire scene hierarchy using cursor-based pagination
+
+        This is a generator that automatically fetches all pages until completion.
+
+        Args:
+            page_size: Items per page (1-500, default: 50)
+            max_nodes: Total node limit per request (1-5000, default: 1000)
+            max_children_per_node: Children per node limit (0-2000, default: 200)
+            parent: Parent object to query from (null = roots)
+            include_transform: Include transform information
+
+        Yields:
+            Dict for each page containing the response from get_hierarchy()
+
+        Example:
+            for page in client.scene.iterate_hierarchy(page_size=100):
+                print(f"Page has {len(page['data']['items'])} items")
+                print(f"Total: {page['data']['total']}")
+                for item in page['data']['items']:
+                    print(f"  - {item['name']}")
+        """
+        cursor = 0
+
+        while True:
+            result = self.get_hierarchy(
+                page_size=page_size,
+                cursor=cursor,
+                max_nodes=max_nodes,
+                max_children_per_node=max_children_per_node,
+                parent=parent,
+                include_transform=include_transform
+            )
+
+            yield result
+
+            # Check if there's a next page
+            data = result.get('data', {})
+            next_cursor = data.get('next_cursor')
+
+            if next_cursor is None:
+                break
+
+            cursor = int(next_cursor)
 
 
 class AssetAPI:
@@ -894,6 +1024,9 @@ Examples:
   %(prog)s config init --output my-config.toml
   %(prog)s scene active
   %(prog)s scene hierarchy
+  %(prog)s scene hierarchy --page-size 100 --cursor 0
+  %(prog)s scene hierarchy --iterate-all --page-size 200
+  %(prog)s scene hierarchy --max-nodes 500 --include-transform
   %(prog)s scene load --name MainScene
   %(prog)s scene load --path Assets/Scenes/Level1.unity
   %(prog)s scene create --name NewScene --path Assets/Scenes
@@ -973,6 +1106,19 @@ Configuration:
                         help="Scale as x,y,z (for gameobject create/modify)")
     parser.add_argument("--parent", default=None,
                         help="Parent GameObject name (for gameobject create)")
+    # Pagination arguments (for scene hierarchy and gameobject find)
+    parser.add_argument("--page-size", type=int, default=None,
+                        help="Items per page (1-500, default: 50)")
+    parser.add_argument("--cursor", type=int, default=None,
+                        help="Starting cursor position (default: 0)")
+    parser.add_argument("--max-nodes", type=int, default=None,
+                        help="Total node limit (1-5000, default: 1000)")
+    parser.add_argument("--max-children-per-node", type=int, default=None,
+                        help="Children per node limit (0-2000, default: 200)")
+    parser.add_argument("--include-transform", action="store_true",
+                        help="Include transform information (for scene hierarchy)")
+    parser.add_argument("--iterate-all", action="store_true",
+                        help="Iterate through all pages (for scene hierarchy)")
     # Config init arguments
     parser.add_argument("--output", "-o", default=None,
                         help="Output path for config init (default: ./.unity-mcp.toml)")
@@ -1129,8 +1275,44 @@ Configuration:
                 print(json.dumps(result, indent=2, ensure_ascii=False))
 
             elif action == "hierarchy":
-                result = client.scene.get_hierarchy()
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+                if args.iterate_all:
+                    # Iterate through all pages
+                    all_items = []
+                    total_pages = 0
+
+                    for page in client.scene.iterate_hierarchy(
+                        page_size=args.page_size or 50,
+                        max_nodes=args.max_nodes,
+                        max_children_per_node=args.max_children_per_node,
+                        include_transform=args.include_transform or None
+                    ):
+                        total_pages += 1
+                        data = page.get('data', {})
+                        items = data.get('items', [])
+                        all_items.extend(items)
+                        print(f"Page {total_pages}: {len(items)} items (total so far: {len(all_items)})", file=sys.stderr)
+
+                    # Print combined result
+                    result = {
+                        "success": True,
+                        "message": f"Retrieved all {len(all_items)} items across {total_pages} pages",
+                        "data": {
+                            "total": len(all_items),
+                            "pages": total_pages,
+                            "items": all_items
+                        }
+                    }
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                else:
+                    # Single page request
+                    result = client.scene.get_hierarchy(
+                        page_size=args.page_size,
+                        cursor=args.cursor,
+                        max_nodes=args.max_nodes,
+                        max_children_per_node=args.max_children_per_node,
+                        include_transform=args.include_transform or None
+                    )
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
 
             elif action == "build-settings":
                 result = client.scene.get_build_settings()
