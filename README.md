@@ -22,6 +22,32 @@ MCPサーバー経由ではなく直接通信する理由:
 
 > Note: Unity Editor側で [unity-mcp](https://github.com/CoplayDev/unity-mcp) パッケージがインストールされ、TCPブリッジが起動している必要があります（Window > MCP For Unity）。
 
+## 主な機能
+
+### シーン階層探索の高度な機能
+
+unity-mcpサーバーが提供する高度なページング機能を完全サポート：
+
+- **ページングサポート**: 大規模シーンでもメモリ効率よく階層を取得
+- **カーソルベースの反復処理**: `iterate_hierarchy()` で全階層を自動的に走査
+- **柔軟な制御**: ノード数制限、子要素数制限、Transform情報の有無を選択可能
+
+```python
+from unity_mcp_client import UnityMCPClient
+
+client = UnityMCPClient()
+
+# ページング付きで階層を取得
+result = client.scene.get_hierarchy(page_size=100, cursor=0)
+print(f"Total: {result['data']['total']}")
+print(f"Next cursor: {result['data']['next_cursor']}")
+
+# 全階層を自動的にイテレート
+for page in client.scene.iterate_hierarchy(page_size=100):
+    for item in page['data']['items']:
+        print(f"- {item['name']}")
+```
+
 ## 動作要件
 
 - [uvx](https://docs.astral.sh/uv/guides/tools/)
@@ -80,6 +106,9 @@ unity-mcp verify --timeout 120 --connection-timeout 60
 # シーン操作
 unity-mcp scene active          # アクティブシーン情報
 unity-mcp scene hierarchy       # シーン階層
+unity-mcp scene hierarchy --page-size 100 --cursor 0  # ページング対応
+unity-mcp scene hierarchy --iterate-all --page-size 200  # 全階層を自動取得
+unity-mcp scene hierarchy --max-nodes 500 --include-transform  # 詳細設定
 unity-mcp scene build-settings  # ビルド設定のシーン一覧
 unity-mcp scene load --name MainScene
 unity-mcp scene load --path Assets/Scenes/Level1.unity
@@ -166,6 +195,12 @@ log_count = 20
 | `--name` | シーン名（create/load） | - |
 | `--path` | シーンパス（create/load/save） | - |
 | `--build-index` | ビルドインデックス（load） | - |
+| `--page-size` | 1ページあたりのアイテム数（hierarchy） | 50 |
+| `--cursor` | 開始カーソル位置（hierarchy） | 0 |
+| `--max-nodes` | 取得ノード総数の上限（hierarchy） | 1000 |
+| `--max-children-per-node` | ノードあたりの子要素上限（hierarchy） | 200 |
+| `--include-transform` | Transform情報を含める（hierarchy） | false |
+| `--iterate-all` | 全ページを自動取得（hierarchy） | false |
 
 ### gameobject専用オプション
 
