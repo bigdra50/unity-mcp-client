@@ -1243,10 +1243,10 @@ Examples:
   %(prog)s config init
   %(prog)s config init --output my-config.toml
   %(prog)s scene active
-  %(prog)s scene hierarchy
-  %(prog)s scene hierarchy --page-size 100 --cursor 0
-  %(prog)s scene hierarchy --iterate-all --page-size 200
-  %(prog)s scene hierarchy --max-nodes 500 --include-transform
+  %(prog)s scene hierarchy                    # roots only (summary)
+  %(prog)s scene hierarchy --depth 1          # roots + direct children
+  %(prog)s scene hierarchy --full             # full nested hierarchy
+  %(prog)s scene hierarchy --iterate-all      # full flattened (paged)
   %(prog)s scene load --name MainScene
   %(prog)s scene load --path Assets/Scenes/Level1.unity
   %(prog)s scene create --name NewScene --path Assets/Scenes
