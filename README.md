@@ -24,29 +24,39 @@ MCPサーバー経由ではなく直接通信する理由:
 
 ## 主な機能
 
-### シーン階層探索の高度な機能
+### シーン階層探索
 
-- **ページングサポート**: 大規模シーンでもメモリ効率よく階層を取得
-- **カーソルベースの反復処理**: `iterate_hierarchy()` で全階層を自動的に走査
-- **柔軟な制御**: ノード数制限、子要素数制限、Transform情報の有無を選択可能
-- **サーバーバージョン互換**: v8.6.0+のサーバー側ページングと、v8.3.0以前のクライアント側ページングの両方に対応
+#### デフォルト動作
+```bash
+unity-mcp scene hierarchy  # 全階層をネストされたリストで取得
+```
+
+#### ページング対応（大規模シーン向け）
+`iterate_hierarchy()` を使うとサーバーバージョンに関係なく統一されたページング形式で取得できます。
 
 ```python
 from unity_mcp_client import UnityMCPClient
 
 client = UnityMCPClient()
 
-# ページング付きで階層を取得
-result = client.scene.get_hierarchy(page_size=100, cursor=0)
-
-# 全階層を自動的にイテレート（サーバーバージョンを自動検出）
+# 全階層を自動的にイテレート（推奨）
+# サーバーv8.6.0+: サーバー側ページング使用
+# サーバーv8.3.0以前: クライアント側でページングをエミュレート
 for page in client.scene.iterate_hierarchy(page_size=100):
-    items = page['data']['items']
-    for item in items:
-        print(f"- {item['name']}")
+    for item in page['data']['items']:
+        print(f"- {item['name']} (depth: {item.get('_depth', 0)})")
 ```
 
-> **Note**: unity-mcp v8.6.0以降ではサーバー側ページングを使用します。v8.3.0以前ではクライアント側でページングをエミュレートします。
+```bash
+# CLI: --iterate-all で全ページを自動取得
+unity-mcp scene hierarchy --iterate-all --page-size 100
+```
+
+#### 機能
+- **ページングサポート**: 大規模シーンでもメモリ効率よく階層を取得
+- **カーソルベースの反復処理**: `iterate_hierarchy()` で全階層を自動的に走査
+- **柔軟な制御**: ノード数制限、子要素数制限、Transform情報の有無を選択可能
+- **サーバーバージョン互換**: v8.6.0+とv8.3.0以前の両方に対応
 
 ## 動作要件
 
@@ -196,12 +206,14 @@ log_count = 20
 | `--name` | シーン名（create/load） | - |
 | `--path` | シーンパス（create/load/save） | - |
 | `--build-index` | ビルドインデックス（load） | - |
-| `--page-size` | 1ページあたりのアイテム数（hierarchy） | 50 |
-| `--cursor` | 開始カーソル位置（hierarchy） | 0 |
-| `--max-nodes` | 取得ノード総数の上限（hierarchy） | 1000 |
-| `--max-children-per-node` | ノードあたりの子要素上限（hierarchy） | 200 |
+| `--page-size` | 1ページあたりのアイテム数（hierarchy）※1 | 50 |
+| `--cursor` | 開始カーソル位置（hierarchy）※1 | 0 |
+| `--max-nodes` | 取得ノード総数の上限（hierarchy）※1 | 1000 |
+| `--max-children-per-node` | ノードあたりの子要素上限（hierarchy）※1 | 200 |
 | `--include-transform` | Transform情報を含める（hierarchy） | false |
 | `--iterate-all` | 全ページを自動取得（hierarchy, find） | false |
+
+※1 ページングオプションはサーバーv8.6.0+で有効。v8.3.0以前ではデフォルト動作（全階層取得）のみ。`--iterate-all` は両バージョンで動作。
 
 ### gameobject専用オプション
 
