@@ -94,6 +94,34 @@ client.prefab.revert("Player")  # 元に戻す
 - **ページングサポート**: `--iterate-all` で全階層をメモリ効率よく取得
 - **サーバーバージョン互換**: v8.6.0+とv8.3.0以前の両方に対応
 
+## v2.0 マイグレーションガイド
+
+v2.0で以下のメソッドが削除されました。専用APIクラス経由でアクセスしてください。
+
+| 削除されたメソッド | 移行先 |
+|-------------------|--------|
+| `client.read_console()` | `client.console.get()` |
+| `client.clear_console()` | `client.console.clear()` |
+| `client.execute_menu_item()` | `client.menu.execute()` |
+| `client.run_tests()` | `client.tests.run()` |
+| `client.manage_script()` | `client.script.create/modify/delete()` |
+| `client.manage_shader()` | `client.shader.create()` |
+| `client.manage_prefabs()` | `client.prefab.create/instantiate/apply/revert()` |
+
+### 移行例
+
+```python
+# v1.x (非推奨)
+client.read_console(types=["error"])
+client.run_tests("edit")
+client.execute_menu_item("Assets/Refresh")
+
+# v2.0
+client.console.get(types=["error"])
+client.tests.run("edit")
+client.menu.execute("Assets/Refresh")
+```
+
 ## 動作要件
 
 - [uvx](https://docs.astral.sh/uv/guides/tools/)

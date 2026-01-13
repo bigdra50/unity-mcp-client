@@ -4,39 +4,45 @@ Unity MCP Client Library
 =========================
 
 Complete Python client for Unity MCP TCP protocol.
-Supports all 10 tools with 60+ actions.
+Supports all tools via dedicated API classes.
 
 Usage:
-    from unity_mcp_client import UnityMCPClient
+    from unity_mcp_client import UnityMCPClient, TestFilterOptions
 
     client = UnityMCPClient()
 
     # Console operations
-    logs = client.read_console(types=["error"], count=10)
-    client.clear_console()
+    logs = client.console.get(types=["error"], count=10)
+    client.console.clear()
 
     # Editor control
     client.editor.play()
     state = client.editor.get_state()
 
     # GameObject operations
-    obj = client.gameobject.create("Player", primitive_type="Cube")
+    client.gameobject.create("Player", primitive_type="Cube")
     client.gameobject.modify("Player", position=[0, 5, 0])
 
     # Scene management
     client.scene.load(path="Assets/Scenes/MainScene.unity")
+    client.scene.get_hierarchy_summary()
 
-    # Asset operations
-    client.asset.create("Assets/Materials/New.mat", "Material")
+    # Tests (with filtering)
+    client.tests.run("edit")
+    client.tests.run("edit", filter_options=TestFilterOptions(category_names=["Unit"]))
 
-    # Run tests
-    results = client.run_tests(mode="edit")
+    # Menu execution
+    client.menu.execute("Assets/Refresh")
+
+    # Script/Shader/Prefab
+    client.script.create("MyScript", namespace="MyGame")
+    client.shader.create("MyShader")
+    client.prefab.create("MyPrefab", source_object="Player")
 
     # Batch execution
     result = client.batch.execute([
         {"tool": "read_console", "params": {"action": "clear"}},
         {"tool": "manage_editor", "params": {"action": "play"}},
-        {"tool": "read_console", "params": {"action": "get", "types": ["error"]}}
     ], fail_fast=True)
 """
 
@@ -1433,12 +1439,30 @@ class UnityMCPClient:
     Usage:
         client = UnityMCPClient()
 
-        # Via API objects (recommended)
+        # Console
+        client.console.get(types=["error"], count=10)
+        client.console.clear()
+
+        # Editor
         client.editor.play()
+        client.editor.stop()
+
+        # GameObject
         client.gameobject.create("Player", primitive_type="Cube")
+        client.gameobject.find(search_term="Player")
+
+        # Scene
         client.scene.load(path="Assets/Scenes/Main.unity")
+        client.scene.get_hierarchy_summary()
+
+        # Tests (with filtering)
+        client.tests.run("edit")
         client.tests.run("edit", filter_options=TestFilterOptions(category_names=["Unit"]))
+
+        # Menu
         client.menu.execute("Assets/Refresh")
+
+        # Script/Shader/Prefab
         client.script.create("MyScript", namespace="MyGame")
         client.shader.create("MyShader")
         client.prefab.create("MyPrefab", source_object="Player")
@@ -1447,7 +1471,6 @@ class UnityMCPClient:
         result = client.batch.execute([
             {"tool": "read_console", "params": {"action": "clear"}},
             {"tool": "manage_editor", "params": {"action": "play"}},
-            {"tool": "read_console", "params": {"action": "get", "types": ["error"]}}
         ], fail_fast=True)
     """
 
@@ -1467,96 +1490,6 @@ class UnityMCPClient:
         self.script = ScriptAPI(self._conn)
         self.shader = ShaderAPI(self._conn)
         self.prefab = PrefabAPI(self._conn)
-
-    # Convenience methods
-    def read_console(self, **kwargs) -> Dict[str, Any]:
-        """Get console logs (convenience method)"""
-        return self.console.get(**kwargs)
-
-    def clear_console(self) -> Dict[str, Any]:
-        """Clear console (convenience method)"""
-        return self.console.clear()
-
-    def execute_menu_item(self, menu_path: str) -> Dict[str, Any]:
-        """Execute Unity menu item.
-
-        .. deprecated::
-            Use `client.menu.execute()` instead.
-        """
-        warnings.warn(
-            "execute_menu_item() is deprecated, use client.menu.execute()",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        return self.menu.execute(menu_path)
-
-    def run_tests(
-        self,
-        mode: str = "edit",
-        timeout_seconds: int = 600,
-        *,
-        filter_options: Optional[TestFilterOptions] = None,
-    ) -> Dict[str, Any]:
-        """Run Unity tests.
-
-        .. deprecated::
-            Use `client.tests.run()` instead.
-        """
-        warnings.warn(
-            "run_tests() is deprecated, use client.tests.run()",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        return self.tests.run(
-            mode=mode,
-            timeout_seconds=timeout_seconds,
-            filter_options=filter_options,
-        )
-
-    def manage_script(self, action: str, name: str, path: str = "Scripts", **kwargs) -> Dict[str, Any]:
-        """Manage C# scripts.
-
-        .. deprecated::
-            Use `client.script.create/modify/delete()` instead.
-        """
-        warnings.warn(
-            "manage_script() is deprecated, use client.script.create/modify/delete()",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        params = {"action": action, "name": name, "path": path}
-        params.update(kwargs)
-        return self._conn.send_command("manage_script", params)
-
-    def manage_shader(self, action: str, name: str, path: str = "Shaders", **kwargs) -> Dict[str, Any]:
-        """Manage shaders.
-
-        .. deprecated::
-            Use `client.shader.create/modify/delete()` instead.
-        """
-        warnings.warn(
-            "manage_shader() is deprecated, use client.shader.create/modify/delete()",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        params = {"action": action, "name": name, "path": path}
-        params.update(kwargs)
-        return self._conn.send_command("manage_shader", params)
-
-    def manage_prefabs(self, action: str, **kwargs) -> Dict[str, Any]:
-        """Manage prefabs.
-
-        .. deprecated::
-            Use `client.prefab.create/instantiate/apply/revert()` instead.
-        """
-        warnings.warn(
-            "manage_prefabs() is deprecated, use client.prefab.create/instantiate/apply/revert()",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        params = {"action": action}
-        params.update(kwargs)
-        return self._conn.send_command("manage_prefabs", params)
 
 
 def main():
