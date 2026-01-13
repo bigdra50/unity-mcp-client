@@ -673,6 +673,9 @@ class SceneAPI:
         Iterate through entire scene hierarchy using cursor-based pagination
 
         This is a generator that automatically fetches all pages until completion.
+        Supports both:
+        - Server v8.6.0+: Paged responses with {"data": {"items": [...], "next_cursor": ...}}
+        - Server v8.3.0 and earlier: Full response with {"data": [...]} (client-side paging)
 
         Args:
             page_size: Items per page (1-500, default: 50)
@@ -682,37 +685,82 @@ class SceneAPI:
             include_transform: Include transform information
 
         Yields:
-            Dict for each page containing the response from get_hierarchy()
+            Dict for each page. For paged servers: original response.
+            For non-paged servers: synthetic paged response with 'items' key.
 
         Example:
             for page in client.scene.iterate_hierarchy(page_size=100):
-                print(f"Page has {len(page['data']['items'])} items")
-                print(f"Total: {page['data']['total']}")
-                for item in page['data']['items']:
+                items = page['data']['items'] if 'items' in page.get('data', {}) else page['data']
+                for item in items:
                     print(f"  - {item['name']}")
         """
         cursor = 0
 
-        while True:
-            result = self.get_hierarchy(
-                page_size=page_size,
-                cursor=cursor,
-                max_nodes=max_nodes,
-                max_children_per_node=max_children_per_node,
-                parent=parent,
-                include_transform=include_transform
-            )
+        result = self.get_hierarchy(
+            page_size=page_size,
+            cursor=cursor,
+            max_nodes=max_nodes,
+            max_children_per_node=max_children_per_node,
+            parent=parent,
+            include_transform=include_transform
+        )
 
+        data = result.get('data', {})
+
+        # Detect server response format
+        if isinstance(data, list):
+            # Legacy server (v8.3.0 and earlier): data is a flat list
+            # Perform client-side pagination
+            all_items = self._flatten_hierarchy(data)
+            total = len(all_items)
+
+            for offset in range(0, total, page_size):
+                page_items = all_items[offset:offset + page_size]
+                yield {
+                    "success": True,
+                    "message": result.get("message", ""),
+                    "data": {
+                        "items": page_items,
+                        "cursor": offset,
+                        "pageSize": len(page_items),
+                        "next_cursor": offset + page_size if offset + page_size < total else None,
+                        "total": total,
+                        "truncated": offset + page_size < total,
+                        "_client_paged": True  # Marker for client-side pagination
+                    }
+                }
+        else:
+            # Modern server (v8.6.0+): data is a dict with pagination info
             yield result
 
-            # Check if there's a next page
-            data = result.get('data', {})
-            next_cursor = data.get('next_cursor')
+            while True:
+                next_cursor = data.get('next_cursor')
+                if next_cursor is None:
+                    break
 
-            if next_cursor is None:
-                break
+                cursor = int(next_cursor)
+                result = self.get_hierarchy(
+                    page_size=page_size,
+                    cursor=cursor,
+                    max_nodes=max_nodes,
+                    max_children_per_node=max_children_per_node,
+                    parent=parent,
+                    include_transform=include_transform
+                )
+                data = result.get('data', {})
+                yield result
 
-            cursor = int(next_cursor)
+    def _flatten_hierarchy(self, items: list, depth: int = 0) -> list:
+        """Flatten nested hierarchy into a flat list with depth info"""
+        result = []
+        for item in items:
+            flat_item = {k: v for k, v in item.items() if k != 'children'}
+            flat_item['_depth'] = depth
+            result.append(flat_item)
+            children = item.get('children', [])
+            if children:
+                result.extend(self._flatten_hierarchy(children, depth + 1))
+        return result
 
 
 class AssetAPI:

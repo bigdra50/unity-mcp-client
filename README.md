@@ -26,11 +26,10 @@ MCPサーバー経由ではなく直接通信する理由:
 
 ### シーン階層探索の高度な機能
 
-unity-mcpサーバーが提供する高度なページング機能を完全サポート：
-
 - **ページングサポート**: 大規模シーンでもメモリ効率よく階層を取得
 - **カーソルベースの反復処理**: `iterate_hierarchy()` で全階層を自動的に走査
 - **柔軟な制御**: ノード数制限、子要素数制限、Transform情報の有無を選択可能
+- **サーバーバージョン互換**: v8.6.0+のサーバー側ページングと、v8.3.0以前のクライアント側ページングの両方に対応
 
 ```python
 from unity_mcp_client import UnityMCPClient
@@ -39,14 +38,15 @@ client = UnityMCPClient()
 
 # ページング付きで階層を取得
 result = client.scene.get_hierarchy(page_size=100, cursor=0)
-print(f"Total: {result['data']['total']}")
-print(f"Next cursor: {result['data']['next_cursor']}")
 
-# 全階層を自動的にイテレート
+# 全階層を自動的にイテレート（サーバーバージョンを自動検出）
 for page in client.scene.iterate_hierarchy(page_size=100):
-    for item in page['data']['items']:
+    items = page['data']['items']
+    for item in items:
         print(f"- {item['name']}")
 ```
+
+> **Note**: unity-mcp v8.6.0以降ではサーバー側ページングを使用します。v8.3.0以前ではクライアント側でページングをエミュレートします。
 
 ## 動作要件
 
