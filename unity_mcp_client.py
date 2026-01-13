@@ -569,6 +569,14 @@ class EditorAPI:
 class TestAPI:
     """Test execution operations"""
 
+    # Alias mapping for convenience
+    _MODE_ALIASES: dict[str, str] = {
+        "edit": "EditMode",
+        "play": "PlayMode",
+        "editmode": "EditMode",
+        "playmode": "PlayMode",
+    }
+
     def __init__(self, conn: UnityMCPConnection):
         self._conn = conn
 
@@ -583,7 +591,7 @@ class TestAPI:
         Run Unity tests with optional filtering.
 
         Args:
-            mode: Test mode ("edit" or "play")
+            mode: Test mode ("edit", "play", "EditMode", or "PlayMode")
             timeout_seconds: Maximum test run duration
             filter_options: Optional TestFilterOptions for filtering tests
 
@@ -591,7 +599,9 @@ class TestAPI:
             When multiple filters are specified in filter_options,
             they combine with AND logic.
         """
-        params: dict[str, Any] = {"mode": mode, "timeoutSeconds": timeout_seconds}
+        # Convert alias to actual mode name
+        actual_mode = self._MODE_ALIASES.get(mode.lower(), mode)
+        params: dict[str, Any] = {"mode": actual_mode, "timeoutSeconds": timeout_seconds}
 
         if filter_options:
             if filter_options.test_names:
