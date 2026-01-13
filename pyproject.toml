@@ -53,10 +53,15 @@ select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
     "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
-    "F401",  # unused imports (TODO: fix in separate PR)
 ]
 
 [tool.ruff.format]
@@ -65,8 +70,7 @@ indent-style = "space"
 
 [tool.mypy]
 python_version = "3.11"
-warn_return_any = false
+strict = true
+warn_return_any = true
 warn_unused_configs = true
-# TODO: Enable strict mode in separate PR
-# strict = true
-# disallow_untyped_defs = true
+disallow_untyped_defs = true
