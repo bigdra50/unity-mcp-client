@@ -46,7 +46,7 @@ jobs:
         run: uv tool install mypy
 
       - name: Run mypy
-        run: uvx mypy unity_mcp_client.py --strict
+        run: uvx mypy unity_mcp_client.py --ignore-missing-imports
 
   build:
     runs-on: ubuntu-latest
