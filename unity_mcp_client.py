@@ -48,7 +48,7 @@ import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Iterator, Callable
 
 
 CONFIG_FILE_NAME = ".unity-mcp.toml"
@@ -359,6 +359,60 @@ class UnityMCPConnection:
             sock.close()
 
 
+def _client_side_paginate(
+    items: List[Any],
+    page_size: int,
+    base_message: str,
+    *,
+    use_int_cursor: bool = False,
+    yield_on_empty: bool = False,
+) -> Iterator[Dict[str, Any]]:
+    """
+    Common client-side pagination for legacy server responses.
+
+    Args:
+        items: Flat list of items to paginate
+        page_size: Items per page
+        base_message: Message from original response
+        use_int_cursor: Use int cursor (hierarchy) vs str cursor (find)
+        yield_on_empty: Yield one page even if items is empty
+
+    Yields:
+        Paginated response dicts with consistent structure
+    """
+    total = len(items)
+
+    # Handle empty case consistently
+    if total == 0 and not yield_on_empty:
+        return
+
+    for offset in range(0, max(total, 1), page_size):
+        page_items = items[offset:offset + page_size]
+        has_more = offset + page_size < total
+
+        cursor_val = offset if use_int_cursor else str(offset)
+        next_cursor_val: Optional[Union[int, str]] = None
+        if has_more:
+            next_cursor_val = offset + page_size if use_int_cursor else str(offset + page_size)
+
+        yield {
+            "success": True,
+            "message": base_message,
+            "data": {
+                "items": page_items,
+                "cursor": cursor_val,
+                "pageSize": len(page_items),
+                "next_cursor": next_cursor_val,
+                "totalCount": total,
+                "hasMore": has_more,
+                "_client_paged": True,
+            }
+        }
+
+        if not page_items:
+            break
+
+
 class ConsoleAPI:
     """Console log operations"""
 
@@ -497,8 +551,34 @@ class GameObjectAPI:
 
     def find(self, search_method: str = "by_name", search_term: Optional[str] = None,
              target: Optional[str] = None, find_all: bool = False,
-             search_inactive: bool = False) -> Dict[str, Any]:
-        """Find GameObject(s)"""
+             search_inactive: bool = False,
+             page_size: Optional[int] = None,
+             page: Optional[int] = None,
+             offset: Optional[int] = None,
+             cursor: Optional[Union[int, str]] = None) -> Dict[str, Any]:
+        """
+        Find GameObject(s) with pagination support
+
+        Args:
+            search_method: Search method (default: "by_name")
+            search_term: Search keyword
+            target: Target name (alternative to search_term)
+            find_all: Find all matching objects
+            search_inactive: Include inactive GameObjects
+            page_size: Items per page (1-500, default: 50)
+            page: Page number (for page-based pagination)
+            offset: Offset value (for offset-based pagination)
+            cursor: Cursor value (for cursor-based pagination). Accepts int or str.
+
+        Returns:
+            Dict containing:
+                - instanceIDs: List of instance IDs
+                - pageSize: Actual items returned
+                - cursor: Current cursor
+                - nextCursor: Next page cursor
+                - totalCount: Total matching items
+                - hasMore: Whether more items exist
+        """
         params = {"action": "find", "searchMethod": search_method, "findAll": find_all}
         if search_term:
             params["searchTerm"] = search_term
@@ -506,8 +586,82 @@ class GameObjectAPI:
             params["target"] = target
         if search_inactive:
             params["searchInactive"] = search_inactive
+        if page_size is not None:
+            params["pageSize"] = page_size
+        if page is not None:
+            params["page"] = page
+        if offset is not None:
+            params["offset"] = offset
+        if cursor is not None:
+            params["cursor"] = cursor
 
         return self._conn.send_command("manage_gameobject", params)
+
+    def iterate_find(self, search_method: str = "by_name",
+                     search_term: Optional[str] = None,
+                     target: Optional[str] = None,
+                     search_inactive: bool = False,
+                     page_size: int = 50):
+        """
+        Iterate through find results using pagination
+
+        This is a generator that automatically fetches all pages until completion.
+        Supports both:
+        - Server v8.6.0+: Paged responses with pagination info
+        - Server v8.3.0 and earlier: Full response (client-side paging)
+
+        Args:
+            search_method: Search method (default: "by_name")
+            search_term: Search keyword
+            target: Target name (alternative to search_term)
+            search_inactive: Include inactive GameObjects
+            page_size: Items per page (1-500, default: 50)
+
+        Yields:
+            Dict for each page containing find results
+        """
+        result = self.find(
+            search_method=search_method,
+            search_term=search_term,
+            target=target,
+            find_all=True,
+            search_inactive=search_inactive,
+            page_size=page_size,
+            cursor="0"
+        )
+
+        data = result.get('data', [])
+
+        # Detect server response format
+        if isinstance(data, list):
+            # Legacy server: data is a flat list, do client-side pagination
+            yield from _client_side_paginate(
+                items=data,
+                page_size=page_size,
+                base_message=result.get("message", ""),
+                use_int_cursor=False,
+                yield_on_empty=False,
+            )
+        else:
+            # Modern server: data is a dict with pagination info
+            yield result
+
+            while data.get('hasMore') or data.get('nextCursor'):
+                next_cursor = data.get('nextCursor')
+                if next_cursor is None:
+                    break
+
+                result = self.find(
+                    search_method=search_method,
+                    search_term=search_term,
+                    target=target,
+                    find_all=True,
+                    search_inactive=search_inactive,
+                    page_size=page_size,
+                    cursor=str(next_cursor)
+                )
+                data = result.get('data', {})
+                yield result
 
     def add_component(self, target: str, components: List[str],
                       search_method: str = "by_name",
@@ -572,9 +726,54 @@ class SceneAPI:
 
         return self._conn.send_command("manage_scene", params)
 
-    def get_hierarchy(self) -> Dict[str, Any]:
-        """Get scene hierarchy"""
-        return self._conn.send_command("manage_scene", {"action": "get_hierarchy"})
+    def get_hierarchy(self,
+                      page_size: Optional[int] = None,
+                      cursor: Optional[Union[int, str]] = None,
+                      max_nodes: Optional[int] = None,
+                      max_depth: Optional[int] = None,
+                      max_children_per_node: Optional[int] = None,
+                      parent: Optional[Any] = None,
+                      include_transform: Optional[bool] = None) -> Dict[str, Any]:
+        """
+        Get scene hierarchy with pagination support
+
+        Args:
+            page_size: Items per page (1-500, default: 50)
+            cursor: Starting position (default: 0). Accepts int or str.
+            max_nodes: Total node limit (1-5000, default: 1000)
+            max_depth: Depth limit (for future compatibility)
+            max_children_per_node: Children per node limit (0-2000, default: 200)
+            parent: Parent object to query from (null = roots)
+            include_transform: Include transform information
+
+        Returns:
+            Dict containing:
+                - scope: "roots" or "children"
+                - cursor: Current cursor position
+                - pageSize: Actual items returned
+                - next_cursor: Next page cursor (null if finished)
+                - truncated: Whether more items exist
+                - total: Total available items
+                - items: List of GameObject summaries
+        """
+        params = {"action": "get_hierarchy"}
+
+        if page_size is not None:
+            params["page_size"] = page_size
+        if cursor is not None:
+            params["cursor"] = cursor
+        if max_nodes is not None:
+            params["max_nodes"] = max_nodes
+        if max_depth is not None:
+            params["max_depth"] = max_depth
+        if max_children_per_node is not None:
+            params["max_children_per_node"] = max_children_per_node
+        if parent is not None:
+            params["parent"] = parent
+        if include_transform is not None:
+            params["include_transform"] = include_transform
+
+        return self._conn.send_command("manage_scene", params)
 
     def get_active(self) -> Dict[str, Any]:
         """Get active scene info"""
@@ -583,6 +782,157 @@ class SceneAPI:
     def get_build_settings(self) -> Dict[str, Any]:
         """Get build settings (scenes in build)"""
         return self._conn.send_command("manage_scene", {"action": "get_build_settings"})
+
+    def get_hierarchy_summary(self, depth: int = 0,
+                               include_transform: bool = False) -> Dict[str, Any]:
+        """
+        Get scene hierarchy summary (safe default for large scenes)
+
+        Args:
+            depth: How deep to traverse (0 = root only, 1 = root + direct children, etc.)
+            include_transform: Include transform information
+
+        Returns:
+            Dict with summary info and limited hierarchy data
+        """
+        result = self.get_hierarchy(include_transform=include_transform)
+
+        if not result.get('success'):
+            return result
+
+        data = result.get('data', [])
+
+        def count_descendants(items: list) -> int:
+            """Count all descendants recursively"""
+            total = 0
+            for item in items:
+                children = item.get('children', [])
+                total += len(children) + count_descendants(children)
+            return total
+
+        def truncate_to_depth(items: list, current_depth: int, max_depth: int) -> list:
+            """Truncate hierarchy to specified depth"""
+            truncated = []
+            for item in items:
+                new_item = {k: v for k, v in item.items() if k != 'children'}
+                children = item.get('children', [])
+                new_item['childCount'] = len(children)
+                new_item['descendantCount'] = len(children) + count_descendants(children)
+
+                if current_depth < max_depth and children:
+                    new_item['children'] = truncate_to_depth(children, current_depth + 1, max_depth)
+                elif children:
+                    new_item['children'] = []  # Truncated
+
+                truncated.append(new_item)
+            return truncated
+
+        if isinstance(data, list):
+            total_objects = len(data) + count_descendants(data)
+            truncated_data = truncate_to_depth(data, 0, depth)
+
+            return {
+                "success": True,
+                "message": f"Hierarchy summary (depth={depth}, total={total_objects} objects)",
+                "data": {
+                    "summary": {
+                        "rootCount": len(data),
+                        "totalCount": total_objects,
+                        "depth": depth,
+                        "truncated": depth < 100  # Always truncated unless very deep
+                    },
+                    "items": truncated_data
+                }
+            }
+        else:
+            # Server v8.6.0+ with paging - return as-is for now
+            return result
+
+    def iterate_hierarchy(self,
+                         page_size: int = 50,
+                         max_nodes: Optional[int] = None,
+                         max_children_per_node: Optional[int] = None,
+                         parent: Optional[Any] = None,
+                         include_transform: Optional[bool] = None):
+        """
+        Iterate through entire scene hierarchy using cursor-based pagination
+
+        This is a generator that automatically fetches all pages until completion.
+        Supports both:
+        - Server v8.6.0+: Paged responses with {"data": {"items": [...], "next_cursor": ...}}
+        - Server v8.3.0 and earlier: Full response with {"data": [...]} (client-side paging)
+
+        Args:
+            page_size: Items per page (1-500, default: 50)
+            max_nodes: Total node limit per request (1-5000, default: 1000)
+            max_children_per_node: Children per node limit (0-2000, default: 200)
+            parent: Parent object to query from (null = roots)
+            include_transform: Include transform information
+
+        Yields:
+            Dict for each page. For paged servers: original response.
+            For non-paged servers: synthetic paged response with 'items' key.
+
+        Example:
+            for page in client.scene.iterate_hierarchy(page_size=100):
+                items = page['data']['items'] if 'items' in page.get('data', {}) else page['data']
+                for item in items:
+                    print(f"  - {item['name']}")
+        """
+        result = self.get_hierarchy(
+            page_size=page_size,
+            cursor=0,
+            max_nodes=max_nodes,
+            max_children_per_node=max_children_per_node,
+            parent=parent,
+            include_transform=include_transform
+        )
+
+        data = result.get('data', {})
+
+        # Detect server response format
+        if isinstance(data, list):
+            # Legacy server (v8.3.0 and earlier): data is a flat list
+            # Perform client-side pagination
+            all_items = self._flatten_hierarchy(data)
+            yield from _client_side_paginate(
+                items=all_items,
+                page_size=page_size,
+                base_message=result.get("message", ""),
+                use_int_cursor=True,
+                yield_on_empty=False,
+            )
+        else:
+            # Modern server (v8.6.0+): data is a dict with pagination info
+            yield result
+
+            while True:
+                next_cursor = data.get('next_cursor')
+                if next_cursor is None:
+                    break
+
+                result = self.get_hierarchy(
+                    page_size=page_size,
+                    cursor=int(next_cursor),
+                    max_nodes=max_nodes,
+                    max_children_per_node=max_children_per_node,
+                    parent=parent,
+                    include_transform=include_transform
+                )
+                data = result.get('data', {})
+                yield result
+
+    def _flatten_hierarchy(self, items: list, depth: int = 0) -> list:
+        """Flatten nested hierarchy into a flat list with depth info"""
+        result = []
+        for item in items:
+            flat_item = {k: v for k, v in item.items() if k != 'children'}
+            flat_item['_depth'] = depth
+            result.append(flat_item)
+            children = item.get('children', [])
+            if children:
+                result.extend(self._flatten_hierarchy(children, depth + 1))
+        return result
 
 
 class AssetAPI:
@@ -893,7 +1243,10 @@ Examples:
   %(prog)s config init
   %(prog)s config init --output my-config.toml
   %(prog)s scene active
-  %(prog)s scene hierarchy
+  %(prog)s scene hierarchy                    # roots only (summary)
+  %(prog)s scene hierarchy --depth 1          # roots + direct children
+  %(prog)s scene hierarchy --full             # full nested hierarchy
+  %(prog)s scene hierarchy --iterate-all      # full flattened (paged)
   %(prog)s scene load --name MainScene
   %(prog)s scene load --path Assets/Scenes/Level1.unity
   %(prog)s scene create --name NewScene --path Assets/Scenes
@@ -973,6 +1326,23 @@ Configuration:
                         help="Scale as x,y,z (for gameobject create/modify)")
     parser.add_argument("--parent", default=None,
                         help="Parent GameObject name (for gameobject create)")
+    # Pagination arguments (for scene hierarchy and gameobject find)
+    parser.add_argument("--page-size", type=int, default=None,
+                        help="Items per page (1-500, default: 50)")
+    parser.add_argument("--cursor", type=int, default=None,
+                        help="Starting cursor position (default: 0)")
+    parser.add_argument("--max-nodes", type=int, default=None,
+                        help="Total node limit (1-5000, default: 1000)")
+    parser.add_argument("--max-children-per-node", type=int, default=None,
+                        help="Children per node limit (0-2000, default: 200)")
+    parser.add_argument("--include-transform", action="store_true",
+                        help="Include transform information (for scene hierarchy)")
+    parser.add_argument("--depth", type=int, default=None,
+                        help="Hierarchy depth (0=roots only, 1=roots+children, etc. Default: 0)")
+    parser.add_argument("--full", action="store_true",
+                        help="Get full hierarchy (no depth limit, legacy behavior)")
+    parser.add_argument("--iterate-all", action="store_true",
+                        help="Iterate through all pages (for scene hierarchy, gameobject find)")
     # Config init arguments
     parser.add_argument("--output", "-o", default=None,
                         help="Output path for config init (default: ./.unity-mcp.toml)")
@@ -1129,8 +1499,51 @@ Configuration:
                 print(json.dumps(result, indent=2, ensure_ascii=False))
 
             elif action == "hierarchy":
-                result = client.scene.get_hierarchy()
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+                if args.iterate_all:
+                    # Iterate through all pages (flattened)
+                    all_items = []
+                    total_pages = 0
+
+                    for page in client.scene.iterate_hierarchy(
+                        page_size=args.page_size or 50,
+                        max_nodes=args.max_nodes,
+                        max_children_per_node=args.max_children_per_node,
+                        include_transform=args.include_transform if args.include_transform else None
+                    ):
+                        total_pages += 1
+                        data = page.get('data', {})
+                        items = data.get('items', [])
+                        all_items.extend(items)
+                        print(f"Page {total_pages}: {len(items)} items (total so far: {len(all_items)})", file=sys.stderr)
+
+                    result = {
+                        "success": True,
+                        "message": f"Retrieved all {len(all_items)} items across {total_pages} pages",
+                        "data": {
+                            "total": len(all_items),
+                            "pages": total_pages,
+                            "items": all_items
+                        }
+                    }
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                elif args.full:
+                    # Full hierarchy (legacy behavior, nested structure)
+                    result = client.scene.get_hierarchy(
+                        page_size=args.page_size,
+                        cursor=args.cursor,
+                        max_nodes=args.max_nodes,
+                        max_children_per_node=args.max_children_per_node,
+                        include_transform=args.include_transform if args.include_transform else None
+                    )
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                else:
+                    # Default: summary (safe for large scenes)
+                    depth = args.depth if args.depth is not None else 0
+                    result = client.scene.get_hierarchy_summary(
+                        depth=depth,
+                        include_transform=args.include_transform
+                    )
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
 
             elif action == "build-settings":
                 result = client.scene.get_build_settings()
@@ -1284,13 +1697,41 @@ Configuration:
                 return [float(p.strip()) for p in parts]
 
             if action == "find":
-                # gameobject find <name>
+                # gameobject find <name> [--iterate-all] [--page-size N]
                 if len(args.args) < 2:
                     print("Error: GameObject name required for find")
                     sys.exit(1)
                 search_term = args.args[1]
-                result = client.gameobject.find(search_method="by_name", search_term=search_term)
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+
+                if args.iterate_all:
+                    # Iterate through all pages
+                    all_items = []
+                    total_pages = 0
+
+                    for page in client.gameobject.iterate_find(
+                        search_method="by_name",
+                        search_term=search_term,
+                        page_size=args.page_size or 50
+                    ):
+                        total_pages += 1
+                        data = page.get('data', {})
+                        items = data.get('items', [])
+                        all_items.extend(items)
+                        print(f"Page {total_pages}: {len(items)} items (total so far: {len(all_items)})", file=sys.stderr)
+
+                    result = {
+                        "success": True,
+                        "message": f"Found {len(all_items)} GameObject(s) across {total_pages} pages",
+                        "data": {
+                            "total": len(all_items),
+                            "pages": total_pages,
+                            "items": all_items
+                        }
+                    }
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                else:
+                    result = client.gameobject.find(search_method="by_name", search_term=search_term)
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
 
             elif action == "create":
                 # gameobject create --name "..." [--primitive Cube] [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--parent "..."]

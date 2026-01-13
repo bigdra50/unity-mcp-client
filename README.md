@@ -22,6 +22,51 @@ MCPサーバー経由ではなく直接通信する理由:
 
 > Note: Unity Editor側で [unity-mcp](https://github.com/CoplayDev/unity-mcp) パッケージがインストールされ、TCPブリッジが起動している必要があります（Window > MCP For Unity）。
 
+## 主な機能
+
+### シーン階層探索
+
+#### デフォルト動作（サマリー）
+大規模シーンでも安全に使えるよう、デフォルトはルートオブジェクトのみを返します。
+
+```bash
+# デフォルト: ルートオブジェクトのみ（子の数を含む）
+unity-mcp scene hierarchy
+# → 7 roots, 387 total objects
+
+# 深さを指定して展開
+unity-mcp scene hierarchy --depth 1   # ルート + 直下の子
+unity-mcp scene hierarchy --depth 2   # 2階層まで
+
+# 全階層を取得（大規模シーン注意）
+unity-mcp scene hierarchy --full      # ネスト構造で全取得
+unity-mcp scene hierarchy --iterate-all  # フラット化してページング取得
+```
+
+#### Python API
+```python
+from unity_mcp_client import UnityMCPClient
+
+client = UnityMCPClient()
+
+# サマリー取得（推奨）
+result = client.scene.get_hierarchy_summary(depth=0)
+print(f"Total: {result['data']['summary']['totalCount']} objects")
+for item in result['data']['items']:
+    print(f"- {item['name']} ({item['descendantCount']} descendants)")
+
+# 全階層をイテレート（大規模シーン対応）
+for page in client.scene.iterate_hierarchy(page_size=100):
+    for item in page['data']['items']:
+        print(f"- {item['name']} (depth: {item.get('_depth', 0)})")
+```
+
+#### 機能
+- **安全なデフォルト**: ルートオブジェクトのみ返却、大規模シーンでも高速
+- **段階的な詳細取得**: `--depth` で必要な深さまで展開
+- **ページングサポート**: `--iterate-all` で全階層をメモリ効率よく取得
+- **サーバーバージョン互換**: v8.6.0+とv8.3.0以前の両方に対応
+
 ## 動作要件
 
 - [uvx](https://docs.astral.sh/uv/guides/tools/)
@@ -79,7 +124,10 @@ unity-mcp verify --timeout 120 --connection-timeout 60
 
 # シーン操作
 unity-mcp scene active          # アクティブシーン情報
-unity-mcp scene hierarchy       # シーン階層
+unity-mcp scene hierarchy       # ルートオブジェクトのみ（サマリー）
+unity-mcp scene hierarchy --depth 1   # ルート+直下の子まで
+unity-mcp scene hierarchy --full      # 全階層（ネスト構造）
+unity-mcp scene hierarchy --iterate-all --page-size 100  # 全階層（フラット化）
 unity-mcp scene build-settings  # ビルド設定のシーン一覧
 unity-mcp scene load --name MainScene
 unity-mcp scene load --path Assets/Scenes/Level1.unity
@@ -88,6 +136,7 @@ unity-mcp scene create --name NewScene --path Assets/Scenes
 
 # GameObject操作
 unity-mcp gameobject find "Main Camera"
+unity-mcp gameobject find "Player" --iterate-all --page-size 20  # ページング対応
 unity-mcp gameobject create --name "MyCube" --primitive Cube --position 0,1,0
 unity-mcp gameobject modify --name "MyCube" --position 5,0,0 --rotation 0,45,0
 unity-mcp gameobject delete --name "MyCube"
@@ -166,6 +215,16 @@ log_count = 20
 | `--name` | シーン名（create/load） | - |
 | `--path` | シーンパス（create/load/save） | - |
 | `--build-index` | ビルドインデックス（load） | - |
+| `--depth` | 階層の深さ（0=ルートのみ, 1=直下の子まで等） | 0 |
+| `--full` | 全階層をネスト構造で取得 | false |
+| `--page-size` | 1ページあたりのアイテム数（--iterate-all時）※1 | 50 |
+| `--cursor` | 開始カーソル位置（--full時）※1 | 0 |
+| `--max-nodes` | 取得ノード総数の上限（--full時）※1 | 1000 |
+| `--max-children-per-node` | ノードあたりの子要素上限（--full時）※1 | 200 |
+| `--include-transform` | Transform情報を含める（hierarchy） | false |
+| `--iterate-all` | 全ページを自動取得（hierarchy, find） | false |
+
+※1 ページングオプションはサーバーv8.6.0+で有効。v8.3.0以前ではデフォルト動作（全階層取得）のみ。`--iterate-all` は両バージョンで動作。
 
 ### gameobject専用オプション
 
