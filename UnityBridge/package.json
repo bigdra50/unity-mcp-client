@@ -1,0 +1,27 @@
+{
+  "name": "com.bigdra50.unity-bridge",
+  "version": "1.0.0",
+  "displayName": "Unity Bridge",
+  "description": "Relay Server経由でUnity Editorを外部から制御するためのブリッジクライアント",
+  "unity": "2021.3",
+  "author": {
+    "name": "bigdra50",
+    "url": "https://github.com/bigdra50"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bigdra50/unity-cli.git",
+    "directory": "UnityBridge"
+  },
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.0.0"
+  },
+  "keywords": [
+    "unity",
+    "bridge",
+    "cli",
+    "automation",
+    "editor"
+  ],
+  "license": "MIT"
+}
