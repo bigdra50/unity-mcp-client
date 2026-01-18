@@ -2,8 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using UnityBridge.Helpers;
 using UnityEditor;
-using UnityEngine;
 
 namespace UnityBridge
 {
@@ -129,7 +129,7 @@ namespace UnityBridge
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[UnityBridge] Disconnect error (ignored): {ex.Message}");
+                    BridgeLog.Warn($"Disconnect error (ignored): {ex.Message}");
                 }
 
                 try
@@ -138,7 +138,7 @@ namespace UnityBridge
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[UnityBridge] Dispose error (ignored): {ex.Message}");
+                    BridgeLog.Warn($"Dispose error (ignored): {ex.Message}");
                 }
             }
         }
@@ -151,7 +151,7 @@ namespace UnityBridge
 
         private void OnCommandReceived(object sender, CommandReceivedEventArgs e)
         {
-            Debug.Log($"[UnityBridge] Queuing command for main thread: {e.Command} (id: {e.Id})");
+            BridgeLog.Verbose($"Queuing command for main thread: {e.Command} (id: {e.Id})");
 
             // Queue command for main thread execution
             _commandQueue.Enqueue(e);
@@ -167,7 +167,7 @@ namespace UnityBridge
 
             EditorApplication.update += ProcessCommandQueue;
             _updateRegistered = true;
-            Debug.Log("[UnityBridge] Registered EditorApplication.update handler");
+            BridgeLog.Verbose("Registered EditorApplication.update handler");
         }
 
         private void UnregisterUpdate()
@@ -184,18 +184,18 @@ namespace UnityBridge
             // Process all queued commands
             while (_commandQueue.TryDequeue(out var e))
             {
-                Debug.Log($"[UnityBridge] Processing command from queue: {e.Command} (id: {e.Id})");
+                BridgeLog.Verbose($"Processing command from queue: {e.Command} (id: {e.Id})");
                 ExecuteCommandOnMainThread(e);
             }
         }
 
         private async void ExecuteCommandOnMainThread(CommandReceivedEventArgs e)
         {
-            Debug.Log($"[UnityBridge] Executing command on main thread: {e.Command} (id: {e.Id})");
+            BridgeLog.Verbose($"Executing command on main thread: {e.Command} (id: {e.Id})");
 
             if (_client == null || !_client.IsConnected)
             {
-                Debug.LogWarning($"[UnityBridge] Cannot execute command, not connected: {e.Command}");
+                BridgeLog.Warn($"Cannot execute command, not connected: {e.Command}");
                 return;
             }
 
@@ -209,26 +209,26 @@ namespace UnityBridge
             }
             catch (ProtocolException pex)
             {
-                Debug.LogWarning($"[UnityBridge] Protocol error: {pex.Code} - {pex.Message}");
+                BridgeLog.Warn($"Protocol error: {pex.Code} - {pex.Message}");
                 try
                 {
                     await _client.SendCommandErrorAsync(e.Id, pex.Code, pex.Message).ConfigureAwait(false);
                 }
                 catch (Exception sendEx)
                 {
-                    Debug.LogError($"[UnityBridge] Failed to send error response: {sendEx.Message}");
+                    BridgeLog.Error($"Failed to send error response: {sendEx.Message}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UnityBridge] Command execution failed: {ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}");
+                BridgeLog.Error($"Command execution failed: {ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}");
                 try
                 {
                     await _client.SendCommandErrorAsync(e.Id, ErrorCode.InternalError, ex.Message).ConfigureAwait(false);
                 }
                 catch (Exception sendEx)
                 {
-                    Debug.LogError($"[UnityBridge] Failed to send error response: {sendEx.Message}");
+                    BridgeLog.Error($"Failed to send error response: {sendEx.Message}");
                 }
             }
         }

@@ -2,8 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
-using UnityEditor;
-using UnityEngine;
+using UnityBridge.Helpers;
 
 namespace UnityBridge.Tools
 {
@@ -65,14 +64,14 @@ namespace UnityBridge.Tools
             var logEntriesType = Type.GetType("UnityEditor.LogEntries, UnityEditor");
             if (logEntriesType == null)
             {
-                Debug.LogWarning("[UnityBridge] Could not find LogEntries type");
+                BridgeLog.Warn("Could not find LogEntries type");
                 return entries;
             }
 
             var logEntryType = Type.GetType("UnityEditor.LogEntry, UnityEditor");
             if (logEntryType == null)
             {
-                Debug.LogWarning("[UnityBridge] Could not find LogEntry type");
+                BridgeLog.Warn("Could not find LogEntry type");
                 return entries;
             }
 
@@ -87,7 +86,7 @@ namespace UnityBridge.Tools
             if (getCountMethod == null || startGettingEntriesMethod == null ||
                 getEntryInternalMethod == null || endGettingEntriesMethod == null)
             {
-                Debug.LogWarning("[UnityBridge] Could not find required LogEntries methods");
+                BridgeLog.Warn("Could not find required LogEntries methods");
                 return entries;
             }
 
@@ -104,11 +103,11 @@ namespace UnityBridge.Tools
 
             if (messageField == null || modeField == null)
             {
-                Debug.LogWarning("[UnityBridge] Could not find required LogEntry fields");
-                // List all fields for debugging
+                BridgeLog.Warn("Could not find required LogEntry fields");
+                // List all fields for debugging (verbose only)
                 foreach (var field in logEntryType.GetFields(instanceBindingFlags))
                 {
-                    Debug.Log($"[UnityBridge] LogEntry field: {field.Name} ({field.FieldType})");
+                    BridgeLog.Verbose($"LogEntry field: {field.Name} ({field.FieldType})");
                 }
                 return entries;
             }

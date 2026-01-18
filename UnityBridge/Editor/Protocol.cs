@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using UnityBridge.Helpers;
 
 namespace UnityBridge
 {
@@ -114,13 +115,13 @@ namespace UnityBridge
             header[2] = (byte)((payloadBytes.Length >> 8) & 0xFF);
             header[3] = (byte)(payloadBytes.Length & 0xFF);
 
-            UnityEngine.Debug.Log($"[UnityBridge] WriteFrameAsync: writing header ({header.Length} bytes)");
+            BridgeLog.Verbose($"WriteFrameAsync: writing header ({header.Length} bytes)");
             await stream.WriteAsync(header, 0, header.Length, cancellationToken).ConfigureAwait(false);
-            UnityEngine.Debug.Log($"[UnityBridge] WriteFrameAsync: writing payload ({payloadBytes.Length} bytes)");
+            BridgeLog.Verbose($"WriteFrameAsync: writing payload ({payloadBytes.Length} bytes)");
             await stream.WriteAsync(payloadBytes, 0, payloadBytes.Length, cancellationToken).ConfigureAwait(false);
-            UnityEngine.Debug.Log("[UnityBridge] WriteFrameAsync: flushing");
+            BridgeLog.Verbose("WriteFrameAsync: flushing");
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-            UnityEngine.Debug.Log("[UnityBridge] WriteFrameAsync: done");
+            BridgeLog.Verbose("WriteFrameAsync: done");
         }
 
         /// <summary>

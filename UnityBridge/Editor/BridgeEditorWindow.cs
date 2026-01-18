@@ -344,7 +344,7 @@ namespace UnityBridge
             {
                 _statusMessage = $"Disconnect error: {ex.Message}";
                 _statusMessageType = MessageType.Warning;
-                Debug.LogWarning($"[UnityBridge] EditorWindow disconnect error: {ex}");
+                Helpers.BridgeLog.Warn($"EditorWindow disconnect error: {ex}");
             }
 
             Repaint();

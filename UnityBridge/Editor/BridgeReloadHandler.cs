@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using UnityBridge.Helpers;
 using UnityEditor;
-using UnityEngine;
 
 namespace UnityBridge
 {
@@ -41,7 +41,7 @@ namespace UnityBridge
             AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
             EditorApplication.quitting += OnEditorQuitting;
 
-            Debug.Log("[UnityBridge] Reload handler initialized");
+            BridgeLog.Verbose("Reload handler initialized");
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace UnityBridge
 
         private static void OnBeforeAssemblyReload()
         {
-            Debug.Log("[UnityBridge] Before assembly reload");
+            BridgeLog.Verbose("Before assembly reload");
 
             var manager = BridgeManager.Instance;
             if (manager != null && manager.Client != null && manager.Client.IsConnected)
@@ -94,7 +94,7 @@ namespace UnityBridge
 
         private static void OnAfterAssemblyReload()
         {
-            Debug.Log("[UnityBridge] After assembly reload");
+            BridgeLog.Verbose("After assembly reload");
 
             if (WasConnected)
             {
@@ -119,7 +119,7 @@ namespace UnityBridge
         {
             if (string.IsNullOrEmpty(host) || port <= 0)
             {
-                Debug.LogError($"[UnityBridge] Reconnection failed: invalid parameters (host={host}, port={port})");
+                BridgeLog.Error($"Reconnection failed: invalid parameters (host={host}, port={port})");
                 return;
             }
 
@@ -128,12 +128,12 @@ namespace UnityBridge
                 var manager = BridgeManager.Instance;
                 if (manager == null)
                 {
-                    Debug.LogError("[UnityBridge] Reconnection failed: BridgeManager.Instance is null");
+                    BridgeLog.Error("Reconnection failed: BridgeManager.Instance is null");
                     return;
                 }
 
                 await manager.ConnectAsync(host, port);
-                Debug.Log("[UnityBridge] Reconnected after reload");
+                BridgeLog.Verbose("Reconnected after reload");
 
                 if (manager.Client != null && manager.Client.IsConnected)
                 {
@@ -142,13 +142,13 @@ namespace UnityBridge
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UnityBridge] Reconnection failed: {ex.Message}");
+                BridgeLog.Error($"Reconnection failed: {ex.Message}");
             }
         }
 
         private static void OnEditorQuitting()
         {
-            Debug.Log("[UnityBridge] Editor quitting");
+            BridgeLog.Verbose("Editor quitting");
 
             var manager = BridgeManager.Instance;
             if (manager != null)

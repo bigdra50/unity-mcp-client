@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using UnityEngine;
+using UnityBridge.Helpers;
 
 namespace UnityBridge
 {
@@ -115,7 +115,7 @@ namespace UnityBridge
                     _status = value;
                 }
 
-                Debug.Log($"[UnityBridge] Status: {oldStatus} -> {value}");
+                BridgeLog.Verbose($"Status: {oldStatus} -> {value}");
                 StatusChanged?.Invoke(this, new ConnectionStatusChangedEventArgs(oldStatus, value));
             }
         }
@@ -145,7 +145,7 @@ namespace UnityBridge
 
             InstanceId = InstanceIdHelper.GetInstanceId();
             ProjectName = InstanceIdHelper.GetProjectName(InstanceId);
-            UnityVersion = Application.unityVersion;
+            UnityVersion = UnityEngine.Application.unityVersion;
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace UnityBridge
         {
             if (Status == ConnectionStatus.Connected || Status == ConnectionStatus.Connecting)
             {
-                Debug.LogWarning("[UnityBridge] Already connected or connecting");
+                BridgeLog.Warn("Already connected or connecting");
                 return;
             }
 
@@ -164,7 +164,7 @@ namespace UnityBridge
 
             try
             {
-                Debug.Log($"[UnityBridge] Connecting to {_host}:{_port}...");
+                BridgeLog.Verbose($"Connecting to {_host}:{_port}...");
 
                 _client = new TcpClient();
                 await _client.ConnectAsync(_host, _port);
@@ -178,7 +178,7 @@ namespace UnityBridge
                     Capabilities);
 
                 await Framing.WriteFrameAsync(_stream, registerMsg, cancellationToken);
-                Debug.Log($"[UnityBridge] Sent REGISTER: {InstanceId}");
+                BridgeLog.Verbose($"Sent REGISTER: {InstanceId}");
 
                 // Wait for REGISTERED response
                 var response = await Framing.ReadFrameAsync(_stream, cancellationToken);
@@ -203,7 +203,7 @@ namespace UnityBridge
 
                 _heartbeatIntervalMs = heartbeatIntervalMs;
                 Status = ConnectionStatus.Connected;
-                Debug.Log($"[UnityBridge] Connected! Heartbeat interval: {_heartbeatIntervalMs}ms");
+                BridgeLog.Info($"Connected to relay server ({_host}:{_port})");
 
                 // Start receive and heartbeat tasks
                 _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token), _cts.Token);
@@ -211,7 +211,7 @@ namespace UnityBridge
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UnityBridge] Connection failed: {ex.Message}");
+                BridgeLog.Error($"Connection failed: {ex.Message}");
                 await DisconnectInternalAsync();
                 throw;
             }
@@ -222,7 +222,7 @@ namespace UnityBridge
         /// </summary>
         public async Task DisconnectAsync()
         {
-            Debug.Log("[UnityBridge] Disconnecting...");
+            BridgeLog.Verbose("Disconnecting...");
             await DisconnectInternalAsync();
         }
 
@@ -239,11 +239,11 @@ namespace UnityBridge
                 Status = ConnectionStatus.Reloading;
                 var statusMsg = Messages.CreateStatus(InstanceId, InstanceStatus.Reloading, "Domain reload started");
                 await Framing.WriteFrameAsync(_stream, statusMsg);
-                Debug.Log("[UnityBridge] Sent STATUS: reloading");
+                BridgeLog.Verbose("Sent STATUS: reloading");
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[UnityBridge] Failed to send reloading status: {ex.Message}");
+                BridgeLog.Warn($"Failed to send reloading status: {ex.Message}");
             }
         }
 
@@ -259,11 +259,11 @@ namespace UnityBridge
             {
                 var statusMsg = Messages.CreateStatus(InstanceId, InstanceStatus.Ready);
                 await Framing.WriteFrameAsync(_stream, statusMsg);
-                Debug.Log("[UnityBridge] Sent STATUS: ready");
+                BridgeLog.Verbose("Sent STATUS: ready");
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[UnityBridge] Failed to send ready status: {ex.Message}");
+                BridgeLog.Warn($"Failed to send ready status: {ex.Message}");
             }
         }
 
@@ -274,7 +274,7 @@ namespace UnityBridge
         {
             if (_stream == null || !_client?.Connected == true)
             {
-                Debug.LogWarning("[UnityBridge] Cannot send result: not connected");
+                BridgeLog.Warn("Cannot send result: not connected");
                 return;
             }
 
@@ -282,11 +282,11 @@ namespace UnityBridge
             {
                 var resultMsg = Messages.CreateCommandResult(id, data);
                 await Framing.WriteFrameAsync(_stream, resultMsg);
-                Debug.Log($"[UnityBridge] Sent COMMAND_RESULT: {id} at {DateTime.Now:HH:mm:ss.fff}");
+                BridgeLog.Verbose($"Sent COMMAND_RESULT: {id}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UnityBridge] Failed to send command result: {ex.Message}");
+                BridgeLog.Error($"Failed to send command result: {ex.Message}");
             }
         }
 
@@ -297,7 +297,7 @@ namespace UnityBridge
         {
             if (_stream == null || !_client?.Connected == true)
             {
-                Debug.LogWarning("[UnityBridge] Cannot send error: not connected");
+                BridgeLog.Warn("Cannot send error: not connected");
                 return;
             }
 
@@ -305,17 +305,17 @@ namespace UnityBridge
             {
                 var errorMsg = Messages.CreateCommandResultError(id, code, message);
                 await Framing.WriteFrameAsync(_stream, errorMsg);
-                Debug.Log($"[UnityBridge] Sent COMMAND_RESULT (error): {id} - {code}");
+                BridgeLog.Verbose($"Sent COMMAND_RESULT (error): {id} - {code}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UnityBridge] Failed to send command error: {ex.Message}");
+                BridgeLog.Error($"Failed to send command error: {ex.Message}");
             }
         }
 
         private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
         {
-            Debug.Log("[UnityBridge] Receive loop started");
+            BridgeLog.Verbose("Receive loop started");
 
             try
             {
@@ -333,12 +333,12 @@ namespace UnityBridge
             {
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    Debug.LogError($"[UnityBridge] Receive loop error: {ex.Message}");
+                    BridgeLog.Error($"Receive loop error: {ex.Message}");
                     await DisconnectInternalAsync();
                 }
             }
 
-            Debug.Log("[UnityBridge] Receive loop ended");
+            BridgeLog.Verbose("Receive loop ended");
         }
 
         private async Task HandleMessageAsync(JObject msg, CancellationToken cancellationToken)
@@ -356,7 +356,7 @@ namespace UnityBridge
                     break;
 
                 default:
-                    Debug.LogWarning($"[UnityBridge] Unknown message type: {msgType}");
+                    BridgeLog.Warn($"Unknown message type: {msgType}");
                     break;
             }
         }
@@ -373,7 +373,7 @@ namespace UnityBridge
         private void HandleCommand(JObject msg)
         {
             var (id, command, parameters, timeoutMs) = Messages.ParseCommand(msg);
-            Debug.Log($"[UnityBridge] Received COMMAND: {command} (id: {id}) at {DateTime.Now:HH:mm:ss.fff}");
+            BridgeLog.Verbose($"Received COMMAND: {command} (id: {id})");
 
             // Fire event on main thread
             var args = new CommandReceivedEventArgs(id, command, parameters, timeoutMs);
@@ -385,7 +385,7 @@ namespace UnityBridge
 
         private async Task HeartbeatLoopAsync(CancellationToken cancellationToken)
         {
-            Debug.Log("[UnityBridge] Heartbeat monitor started");
+            BridgeLog.Verbose("Heartbeat monitor started");
 
             try
             {
@@ -405,11 +405,11 @@ namespace UnityBridge
             {
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    Debug.LogError($"[UnityBridge] Heartbeat error: {ex.Message}");
+                    BridgeLog.Error($"Heartbeat error: {ex.Message}");
                 }
             }
 
-            Debug.Log("[UnityBridge] Heartbeat monitor ended");
+            BridgeLog.Verbose("Heartbeat monitor ended");
         }
 
         private async Task DisconnectInternalAsync()
@@ -532,14 +532,14 @@ namespace UnityBridge
                 // Only fire if status actually changed
                 if (oldStatus != ConnectionStatus.Disconnected)
                 {
-                    Debug.Log($"[UnityBridge] Status: {oldStatus} -> Disconnected");
+                    BridgeLog.Verbose($"Status: {oldStatus} -> Disconnected");
                     try
                     {
                         StatusChanged?.Invoke(this, new ConnectionStatusChangedEventArgs(oldStatus, ConnectionStatus.Disconnected));
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning($"[UnityBridge] StatusChanged event handler error: {ex.Message}");
+                        BridgeLog.Warn($"StatusChanged event handler error: {ex.Message}");
                     }
                 }
             }

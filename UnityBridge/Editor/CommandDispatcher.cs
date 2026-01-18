@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using UnityEngine;
+using UnityBridge.Helpers;
 
 namespace UnityBridge
 {
@@ -65,7 +65,7 @@ namespace UnityBridge
                 throw new ArgumentNullException(nameof(handler));
 
             _handlers[commandName] = handler;
-            Debug.Log($"[UnityBridge] Registered handler: {commandName}");
+            BridgeLog.Verbose($"Registered handler: {commandName}");
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace UnityBridge
 
         private void DiscoverHandlers()
         {
-            Debug.Log("[UnityBridge] Discovering command handlers...");
+            BridgeLog.Verbose("Discovering command handlers...");
 
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var handlerCount = 0;
@@ -157,7 +157,7 @@ namespace UnityBridge
                 }
             }
 
-            Debug.Log($"[UnityBridge] Discovered {handlerCount} command handlers");
+            BridgeLog.Verbose($"Discovered {handlerCount} command handlers");
         }
 
         private void RegisterTypeHandler(Type type, string commandName)
@@ -172,8 +172,8 @@ namespace UnityBridge
 
             if (method == null)
             {
-                Debug.LogWarning(
-                    $"[UnityBridge] Handler {type.Name} missing HandleCommand(JObject) method");
+                BridgeLog.Warn(
+                    $"Handler {type.Name} missing HandleCommand(JObject) method");
                 return;
             }
 
@@ -205,12 +205,12 @@ namespace UnityBridge
             }
             else
             {
-                Debug.LogWarning(
-                    $"[UnityBridge] Handler {type.Name}.HandleCommand has unsupported return type: {returnType}");
+                BridgeLog.Warn(
+                    $"Handler {type.Name}.HandleCommand has unsupported return type: {returnType}");
                 return;
             }
 
-            Debug.Log($"[UnityBridge] Registered handler: {commandName} ({type.Name})");
+            BridgeLog.Verbose($"Registered handler: {commandName} ({type.Name})");
         }
     }
 }

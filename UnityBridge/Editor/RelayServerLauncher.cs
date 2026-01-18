@@ -1,9 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using UnityBridge.Helpers;
 using UnityEditor;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 namespace UnityBridge
 {
@@ -97,11 +97,11 @@ namespace UnityBridge
             if (Directory.Exists(relayPath))
             {
                 _localDevPath = projectRoot;
-                Debug.Log($"[UnityBridge] UNITY_BRIDGE_LOCAL_DEV enabled, using local path: {_localDevPath}");
+                BridgeLog.Verbose($"UNITY_BRIDGE_LOCAL_DEV enabled, using local path: {_localDevPath}");
             }
             else
             {
-                Debug.LogWarning("[UnityBridge] UNITY_BRIDGE_LOCAL_DEV enabled but relay/ not found in project root");
+                BridgeLog.Warn("UNITY_BRIDGE_LOCAL_DEV enabled but relay/ not found in project root");
             }
 #endif
         }
@@ -140,7 +140,7 @@ namespace UnityBridge
                 var pid = GetProcessIdForPort(port);
                 if (pid > 0)
                 {
-                    Debug.Log($"[UnityBridge] Killing existing process on port {port} (PID: {pid})");
+                    BridgeLog.Verbose($"Killing existing process on port {port} (PID: {pid})");
                     KillProcess(pid);
                     // Wait a bit for the port to be released
                     System.Threading.Thread.Sleep(500);
@@ -148,7 +148,7 @@ namespace UnityBridge
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[UnityBridge] Error killing process on port {port}: {ex.Message}");
+                BridgeLog.Warn($"Error killing process on port {port}: {ex.Message}");
             }
         }
 
@@ -184,7 +184,7 @@ namespace UnityBridge
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[UnityBridge] Error checking port {port}: {ex.Message}");
+                BridgeLog.Warn($"Error checking port {port}: {ex.Message}");
             }
 
             return -1;
@@ -209,7 +209,7 @@ namespace UnityBridge
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[UnityBridge] Error killing process {pid}: {ex.Message}");
+                BridgeLog.Warn($"Error killing process {pid}: {ex.Message}");
             }
         }
 
@@ -277,7 +277,7 @@ namespace UnityBridge
         {
             if (IsRunning)
             {
-                Debug.LogWarning("[UnityBridge] Relay Server is already running");
+                BridgeLog.Warn("Relay Server is already running");
                 return;
             }
 
@@ -298,7 +298,7 @@ namespace UnityBridge
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        Debug.Log($"[Relay Server] {e.Data}");
+                        BridgeLog.Relay(e.Data);
                         OutputReceived?.Invoke(this, e.Data);
                     }
                 };
@@ -309,11 +309,11 @@ namespace UnityBridge
                     {
                         if (e.Data.Contains("ERROR") || e.Data.Contains("Exception"))
                         {
-                            Debug.LogError($"[Relay Server] {e.Data}");
+                            BridgeLog.RelayError(e.Data);
                         }
                         else
                         {
-                            Debug.Log($"[Relay Server] {e.Data}");
+                            BridgeLog.Relay(e.Data);
                         }
 
                         ErrorReceived?.Invoke(this, e.Data);
@@ -322,7 +322,7 @@ namespace UnityBridge
 
                 _serverProcess.Exited += (_, _) =>
                 {
-                    Debug.Log("[UnityBridge] Relay Server stopped");
+                    BridgeLog.Info("Relay Server stopped");
                     ServerStopped?.Invoke(this, EventArgs.Empty);
                 };
 
@@ -334,13 +334,13 @@ namespace UnityBridge
                 SessionState.SetInt(SessionStateKeyPid, _serverProcess.Id);
                 SessionState.SetInt(SessionStateKeyPort, port);
 
-                Debug.Log($"[UnityBridge] Relay Server started (PID: {_serverProcess.Id}, Port: {port})");
-                Debug.Log($"[UnityBridge] Command: {startInfo.FileName} {startInfo.Arguments}");
+                BridgeLog.Info($"Relay Server started (PID: {_serverProcess.Id}, Port: {port})");
+                BridgeLog.Verbose($"Command: {startInfo.FileName} {startInfo.Arguments}");
                 ServerStarted?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UnityBridge] Failed to start Relay Server: {ex.Message}");
+                BridgeLog.Error($"Failed to start Relay Server: {ex.Message}");
                 _serverProcess = null;
             }
         }
@@ -377,7 +377,7 @@ namespace UnityBridge
                     startInfo.FileName = _uvPath;
                     startInfo.Arguments = $"run python -m relay.server --port {port}";
                     startInfo.WorkingDirectory = _localDevPath;
-                    Debug.Log($"[UnityBridge] Using local development mode: {_localDevPath}");
+                    BridgeLog.Verbose($"Using local development mode: {_localDevPath}");
                     return startInfo;
                 }
 
@@ -397,12 +397,12 @@ namespace UnityBridge
             {
                 startInfo.FileName = _uvPath;
                 startInfo.Arguments = $"tool run --from {PackageSource} unity-relay --port {port}";
-                Debug.Log("[UnityBridge] Using uvx with remote package");
+                BridgeLog.Verbose("Using uvx with remote package");
                 return startInfo;
             }
 
-            Debug.LogError(
-                "[UnityBridge] Could not find uv. Please install uv (https://docs.astral.sh/uv/) or set a custom command.");
+            BridgeLog.Error(
+                "Could not find uv. Please install uv (https://docs.astral.sh/uv/) or set a custom command.");
             return null;
         }
 
@@ -435,7 +435,7 @@ namespace UnityBridge
 
             try
             {
-                Debug.Log("[UnityBridge] Stopping Relay Server...");
+                BridgeLog.Verbose("Stopping Relay Server...");
 
                 // Try to stop via direct process reference first
                 if (_serverProcess != null && !_serverProcess.HasExited)
@@ -448,14 +448,14 @@ namespace UnityBridge
                     var savedPid = SessionState.GetInt(SessionStateKeyPid, -1);
                     if (savedPid > 0)
                     {
-                        Debug.Log($"[UnityBridge] Killing server by saved PID: {savedPid}");
+                        BridgeLog.Verbose($"Killing server by saved PID: {savedPid}");
                         KillProcess(savedPid);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[UnityBridge] Error stopping server: {ex.Message}");
+                BridgeLog.Warn($"Error stopping server: {ex.Message}");
             }
             finally
             {
@@ -474,7 +474,7 @@ namespace UnityBridge
                 SessionState.EraseInt(SessionStateKeyPid);
                 SessionState.EraseInt(SessionStateKeyPort);
 
-                Debug.Log("[UnityBridge] Relay Server stopped");
+                BridgeLog.Info("Relay Server stopped");
 
                 // Fire ServerStopped event so listeners can clean up
                 // Note: Process.Exited event may not fire when we call Kill() + Dispose()
@@ -484,7 +484,7 @@ namespace UnityBridge
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[UnityBridge] ServerStopped event error: {ex.Message}");
+                    BridgeLog.Warn($"ServerStopped event error: {ex.Message}");
                 }
             }
         }
