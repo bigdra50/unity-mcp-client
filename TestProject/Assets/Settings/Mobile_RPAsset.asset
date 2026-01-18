@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bf2edee5c58d82540a51f03df9d42094, type: 3}
   m_Name: Mobile_RPAsset
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   k_AssetVersion: 12
   k_AssetPreviousVersion: 12
   m_RendererType: 1
@@ -98,7 +98,7 @@ MonoBehaviour:
       m_Values: []
     obsoleteHasProbeVolumes:
       m_Keys: []
-      m_Values: 
+      m_Values:
   m_PrefilteringModeMainLightShadows: 3
   m_PrefilteringModeAdditionalLight: 4
   m_PrefilteringModeAdditionalLightShadows: 0

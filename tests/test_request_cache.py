@@ -145,7 +145,8 @@ class TestRequestCache:
     def test_get_cached_expired(self, cache: RequestCache) -> None:
         """get_cached returns None for expired entries"""
         cache._cache["req-expired"] = CacheEntry(
-            response={"success": True}, created_at=time.time() - 120  # 2 minutes ago
+            response={"success": True},
+            created_at=time.time() - 120,  # 2 minutes ago
         )
 
         result = cache.get_cached("req-expired")

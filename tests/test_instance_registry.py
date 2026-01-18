@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -448,9 +447,7 @@ class TestInstanceRegistry:
         assert ready_instances[0].instance_id == "/ready"
 
     @pytest.mark.asyncio
-    async def test_close_all(
-        self, registry: InstanceRegistry, mock_reader: MagicMock, mock_writer: MagicMock
-    ) -> None:
+    async def test_close_all(self, registry: InstanceRegistry, mock_reader: MagicMock, mock_writer: MagicMock) -> None:
         await registry.register(
             instance_id="/test",
             project_name="Test",
