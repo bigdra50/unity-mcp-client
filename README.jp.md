@@ -15,17 +15,17 @@ Play Mode 制御、コンソールログ取得、テスト実行、シーン/Gam
 
 ```bash
 # Play Mode 制御
-unity-cli play
-unity-cli stop
+u play
+u stop
 
 # コンソールログ取得
-unity-cli console get --types error
+u console get --types error
 
 # メニュー実行
-unity-cli menu exec "Assets/Refresh"
+u menu exec "Assets/Refresh"
 
 # ContextMenu 実行
-unity-cli menu context "DoSomething" -t "/Player"
+u menu context "DoSomething" -t "/Player"
 ```
 
 主な特徴:
@@ -64,14 +64,14 @@ Unity Editorで `Window > Unity Bridge` を開き:
 
 ```bash
 # uvx で直接実行（インストール不要）
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli state
+uvx --from git+https://github.com/bigdra50/unity-cli u state
 
 # Play Mode制御
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli play
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli stop
+uvx --from git+https://github.com/bigdra50/unity-cli u play
+uvx --from git+https://github.com/bigdra50/unity-cli u stop
 
 # コンソールログ取得
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli console --types error
+uvx --from git+https://github.com/bigdra50/unity-cli u console --types error
 ```
 
 ## インストール
@@ -83,10 +83,13 @@ uv tool install git+https://github.com/bigdra50/unity-cli
 # インタラクティブUI付き（エディタ選択プロンプト）
 uv tool install "git+https://github.com/bigdra50/unity-cli[interactive]"
 
-# CLIコマンド
-unity-cli state
-unity-cli play
-unity-cli console --types error --count 10
+# CLIコマンド（すべてのエイリアスが同じ動作）
+unity-cli state    # フルネーム
+unity state        # 短縮形
+u state            # 最短形
+
+u play
+u console --types error --count 10
 
 # Relay Server 単体起動
 unity-relay --port 6500
@@ -98,16 +101,16 @@ unity-relay --port 6500
 
 ```bash
 # Bash
-unity-cli completion bash >> ~/.bashrc
+u completion bash >> ~/.bashrc
 
 # Zsh
-unity-cli completion zsh >> ~/.zshrc
+u completion zsh >> ~/.zshrc
 
 # Fish
-unity-cli completion fish > ~/.config/fish/completions/unity-cli.fish
+u completion fish > ~/.config/fish/completions/unity-cli.fish
 
 # PowerShell
-unity-cli completion powershell >> $PROFILE
+u completion powershell >> $PROFILE
 ```
 
 シェルを再起動するか、設定ファイルをsourceして有効化。
@@ -118,196 +121,196 @@ unity-cli completion powershell >> $PROFILE
 
 ```bash
 # プロジェクトを適切なバージョンで開く（ProjectVersion.txt参照）
-unity-cli open ./MyUnityProject
+u open ./MyUnityProject
 
 # エディタバージョンを指定
-unity-cli open ./MyUnityProject --editor 2022.3.10f1
+u open ./MyUnityProject --editor 2022.3.10f1
 
 # 非インタラクティブモード（CI/スクリプト向け）
-unity-cli open ./MyUnityProject --non-interactive
+u open ./MyUnityProject --non-interactive
 
 # 終了まで待機
-unity-cli open ./MyUnityProject --wait
+u open ./MyUnityProject --wait
 ```
 
 ### エディタ管理
 
 ```bash
 # インストール済みエディタ一覧
-unity-cli editor list
+u editor list
 
 # エディタインストール
-unity-cli editor install 2022.3.10f1
+u editor install 2022.3.10f1
 
 # モジュール付きでインストール
-unity-cli editor install 2022.3.10f1 --modules android ios webgl
+u editor install 2022.3.10f1 --modules android ios webgl
 ```
 
 ### プロジェクト情報（Relay Server不要）
 
 ```bash
 # プロジェクト全情報
-unity-cli project info ./MyUnityProject
+u project info ./MyUnityProject
 
 # Unityバージョンのみ
-unity-cli project version ./MyUnityProject
+u project version ./MyUnityProject
 
 # パッケージ一覧
-unity-cli project packages ./MyUnityProject
+u project packages ./MyUnityProject
 
 # タグ・レイヤー
-unity-cli project tags ./MyUnityProject
+u project tags ./MyUnityProject
 
 # 品質設定
-unity-cli project quality ./MyUnityProject
+u project quality ./MyUnityProject
 
 # Assembly Definition一覧
-unity-cli project assemblies ./MyUnityProject
+u project assemblies ./MyUnityProject
 
 # JSON出力
-unity-cli --json project info ./MyUnityProject
+u --json project info ./MyUnityProject
 ```
 
 ### 基本操作（Relay Server経由）
 
 ```bash
 # エディタ状態確認
-unity-cli state
+u state
 
 # Play Mode制御
-unity-cli play
-unity-cli stop
-unity-cli pause
+u play
+u stop
+u pause
 
 # コンソールログ
-unity-cli console
-unity-cli console --types error warning --count 20
+u console
+u console --types error warning --count 20
 
 # アセットリフレッシュ
-unity-cli refresh
+u refresh
 ```
 
 ### インスタンス管理
 
 ```bash
 # 接続中インスタンス一覧
-unity-cli instances
+u instances
 
 # 特定インスタンスを指定
-unity-cli --instance /Users/dev/MyGame state
-unity-cli --instance /Users/dev/Demo play
+u --instance /Users/dev/MyGame state
+u --instance /Users/dev/Demo play
 
 # デフォルトインスタンス変更
-unity-cli set-default /Users/dev/MyGame
+u set-default /Users/dev/MyGame
 ```
 
 ### テスト実行
 
 ```bash
 # EditModeテスト
-unity-cli tests edit
+u tests edit
 
 # PlayModeテスト
-unity-cli tests play
+u tests play
 
 # フィルタリング
-unity-cli tests edit --test-names "MyTests.SampleTest"
-unity-cli tests edit --category-names "Unit" "Integration"
-unity-cli tests edit --assembly-names "MyGame.Tests"
+u tests edit --test-names "MyTests.SampleTest"
+u tests edit --category-names "Unit" "Integration"
+u tests edit --assembly-names "MyGame.Tests"
 ```
 
 ### シーン操作
 
 ```bash
 # アクティブシーン情報
-unity-cli scene active
+u scene active
 
 # 階層取得
-unity-cli scene hierarchy                    # ルートのみ
-unity-cli scene hierarchy --depth 2          # 2階層まで
-unity-cli scene hierarchy --iterate-all      # 全階層（ページング）
+u scene hierarchy                    # ルートのみ
+u scene hierarchy --depth 2          # 2階層まで
+u scene hierarchy --iterate-all      # 全階層（ページング）
 
 # シーン操作
-unity-cli scene load --name MainScene
-unity-cli scene save
-unity-cli scene create --name NewScene --path Assets/Scenes
+u scene load --name MainScene
+u scene save
+u scene create --name NewScene --path Assets/Scenes
 ```
 
 ### GameObject操作
 
 ```bash
 # 検索
-unity-cli gameobject find "Main Camera"
-unity-cli gameobject find "Player" --iterate-all
+u gameobject find "Main Camera"
+u gameobject find "Player" --iterate-all
 
 # 作成
-unity-cli gameobject create --name "MyCube" --primitive Cube --position 0,1,0
+u gameobject create --name "MyCube" --primitive Cube --position 0,1,0
 
 # 変更
-unity-cli gameobject modify --name "MyCube" --position 5,0,0 --rotation 0,45,0
+u gameobject modify --name "MyCube" --position 5,0,0 --rotation 0,45,0
 
 # 削除
-unity-cli gameobject delete --name "MyCube"
+u gameobject delete --name "MyCube"
 ```
 
 ### コンポーネント操作
 
 ```bash
 # コンポーネント一覧
-unity-cli component list -t "Main Camera"
+u component list -t "Main Camera"
 
 # コンポーネント詳細
-unity-cli component inspect -t "Main Camera" -T Camera
+u component inspect -t "Main Camera" -T Camera
 
 # コンポーネント追加
-unity-cli component add -t "Player" -T Rigidbody
+u component add -t "Player" -T Rigidbody
 
 # コンポーネント削除
-unity-cli component remove -t "Player" -T Rigidbody
+u component remove -t "Player" -T Rigidbody
 ```
 
 ### メニュー/ContextMenu
 
 ```bash
 # メニュー実行
-unity-cli menu exec "Edit/Play"
-unity-cli menu exec "Assets/Refresh"
-unity-cli menu exec "Window/General/Console"
+u menu exec "Edit/Play"
+u menu exec "Assets/Refresh"
+u menu exec "Window/General/Console"
 
 # メニュー一覧
-unity-cli menu list                    # 全メニュー
-unity-cli menu list -f "Assets"        # フィルタリング
-unity-cli menu list -f "Play" -l 20    # 件数制限
+u menu list                    # 全メニュー
+u menu list -f "Assets"        # フィルタリング
+u menu list -f "Play" -l 20    # 件数制限
 
 # ContextMenu実行（シーン内オブジェクト）
-unity-cli menu context "Reset" -t "/Player"
+u menu context "Reset" -t "/Player"
 
 # ContextMenu実行（ScriptableObject）
-unity-cli menu context "DoSomething" -t "Assets/Data/Config.asset"
+u menu context "DoSomething" -t "Assets/Data/Config.asset"
 
 # ContextMenu実行（Prefab）
-unity-cli menu context "Initialize" -t "Assets/Prefabs/Enemy.prefab"
+u menu context "Initialize" -t "Assets/Prefabs/Enemy.prefab"
 ```
 
 ### アセット操作
 
 ```bash
 # Prefab作成
-unity-cli asset prefab -s "Player" -p "Assets/Prefabs/Player.prefab"
+u asset prefab -s "Player" -p "Assets/Prefabs/Player.prefab"
 
 # ScriptableObject作成
-unity-cli asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
+u asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
 
 # アセット情報
-unity-cli asset info "Assets/Data/Config.asset"
+u asset info "Assets/Data/Config.asset"
 ```
 
 ### マテリアル操作
 
 ```bash
-unity-cli material info --path Assets/Materials/Default.mat
-unity-cli material create --path Assets/Materials/New.mat --shader Standard
-unity-cli material set-color --path Assets/Materials/New.mat --color 1,0,0,1
+u material info --path Assets/Materials/Default.mat
+u material create --path Assets/Materials/New.mat --shader Standard
+u material set-color --path Assets/Materials/New.mat --color 1,0,0,1
 ```
 
 ## オプション
@@ -342,7 +345,7 @@ unity-cli material set-color --path Assets/Materials/New.mat --color 1,0,0,1
 
 ```mermaid
 flowchart TB
-    subgraph CLI["unity-cli (Python)"]
+    subgraph CLI["u (Python)"]
         direction TB
         RC[RelayConnection: TCP通信]
         EB[Exponential Backoff: 500ms → 8s]
@@ -384,10 +387,10 @@ flowchart TB
 lsof -i :6500
 
 # 接続中インスタンス確認
-unity-cli instances
+u instances
 
 # Unityコンソールでエラー確認
-unity-cli console --types error
+u console --types error
 ```
 
 ## v2.x → v3.0 マイグレーション
@@ -404,8 +407,8 @@ unity-cli console --types error
 unity-mcp --port 6400 state
 
 # v3.0
-unity-cli state  # Relay経由
-unity-cli --instance /path/to/project state  # 特定インスタンス
+u state  # Relay経由
+u --instance /path/to/project state  # 特定インスタンス
 ```
 
 ## ライセンス

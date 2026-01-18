@@ -15,17 +15,17 @@ Execute Unity Editor operations from CLI: Play Mode control, console log retriev
 
 ```bash
 # Play Mode control
-unity-cli play
-unity-cli stop
+u play
+u stop
 
 # Get console logs
-unity-cli console get --types error
+u console get --types error
 
 # Execute menu items
-unity-cli menu exec "Assets/Refresh"
+u menu exec "Assets/Refresh"
 
 # Execute ContextMenu
-unity-cli menu context "DoSomething" -t "/Player"
+u menu context "DoSomething" -t "/Player"
 ```
 
 Key features:
@@ -64,14 +64,14 @@ In Unity Editor, open `Window > Unity Bridge`:
 
 ```bash
 # Run directly with uvx (no installation required)
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli state
+uvx --from git+https://github.com/bigdra50/unity-cli u state
 
 # Play Mode control
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli play
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli stop
+uvx --from git+https://github.com/bigdra50/unity-cli u play
+uvx --from git+https://github.com/bigdra50/unity-cli u stop
 
 # Get console logs
-uvx --from git+https://github.com/bigdra50/unity-cli unity-cli console --types error
+uvx --from git+https://github.com/bigdra50/unity-cli u console --types error
 ```
 
 ## Installation
@@ -83,10 +83,13 @@ uv tool install git+https://github.com/bigdra50/unity-cli
 # With interactive UI (editor selection prompt)
 uv tool install "git+https://github.com/bigdra50/unity-cli[interactive]"
 
-# CLI commands
-unity-cli state
-unity-cli play
-unity-cli console --types error --count 10
+# CLI commands (all aliases work the same)
+unity-cli state    # Full name
+unity state        # Short alias
+u state            # Shortest alias
+
+u play
+u console --types error --count 10
 
 # Run Relay Server standalone
 unity-relay --port 6500
@@ -98,16 +101,16 @@ Enable tab completion for your shell:
 
 ```bash
 # Bash
-unity-cli completion bash >> ~/.bashrc
+u completion bash >> ~/.bashrc
 
 # Zsh
-unity-cli completion zsh >> ~/.zshrc
+u completion zsh >> ~/.zshrc
 
 # Fish
-unity-cli completion fish > ~/.config/fish/completions/unity-cli.fish
+u completion fish > ~/.config/fish/completions/unity-cli.fish
 
 # PowerShell
-unity-cli completion powershell >> $PROFILE
+u completion powershell >> $PROFILE
 ```
 
 Restart your shell or source the config file to enable completion.
@@ -118,196 +121,196 @@ Restart your shell or source the config file to enable completion.
 
 ```bash
 # Open project with appropriate version (reads ProjectVersion.txt)
-unity-cli open ./MyUnityProject
+u open ./MyUnityProject
 
 # Specify editor version
-unity-cli open ./MyUnityProject --editor 2022.3.10f1
+u open ./MyUnityProject --editor 2022.3.10f1
 
 # Non-interactive mode (for CI/scripts)
-unity-cli open ./MyUnityProject --non-interactive
+u open ./MyUnityProject --non-interactive
 
 # Wait until exit
-unity-cli open ./MyUnityProject --wait
+u open ./MyUnityProject --wait
 ```
 
 ### Editor Management
 
 ```bash
 # List installed editors
-unity-cli editor list
+u editor list
 
 # Install editor
-unity-cli editor install 2022.3.10f1
+u editor install 2022.3.10f1
 
 # Install with modules
-unity-cli editor install 2022.3.10f1 --modules android ios webgl
+u editor install 2022.3.10f1 --modules android ios webgl
 ```
 
 ### Project Information (No Relay Server Required)
 
 ```bash
 # Full project info
-unity-cli project info ./MyUnityProject
+u project info ./MyUnityProject
 
 # Unity version only
-unity-cli project version ./MyUnityProject
+u project version ./MyUnityProject
 
 # Package list
-unity-cli project packages ./MyUnityProject
+u project packages ./MyUnityProject
 
 # Tags & layers
-unity-cli project tags ./MyUnityProject
+u project tags ./MyUnityProject
 
 # Quality settings
-unity-cli project quality ./MyUnityProject
+u project quality ./MyUnityProject
 
 # Assembly Definition list
-unity-cli project assemblies ./MyUnityProject
+u project assemblies ./MyUnityProject
 
 # JSON output
-unity-cli --json project info ./MyUnityProject
+u --json project info ./MyUnityProject
 ```
 
 ### Basic Operations (via Relay Server)
 
 ```bash
 # Check editor state
-unity-cli state
+u state
 
 # Play Mode control
-unity-cli play
-unity-cli stop
-unity-cli pause
+u play
+u stop
+u pause
 
 # Console logs
-unity-cli console
-unity-cli console --types error warning --count 20
+u console
+u console --types error warning --count 20
 
 # Asset refresh
-unity-cli refresh
+u refresh
 ```
 
 ### Instance Management
 
 ```bash
 # List connected instances
-unity-cli instances
+u instances
 
 # Specify target instance
-unity-cli --instance /Users/dev/MyGame state
-unity-cli --instance /Users/dev/Demo play
+u --instance /Users/dev/MyGame state
+u --instance /Users/dev/Demo play
 
 # Change default instance
-unity-cli set-default /Users/dev/MyGame
+u set-default /Users/dev/MyGame
 ```
 
 ### Test Execution
 
 ```bash
 # EditMode tests
-unity-cli tests edit
+u tests edit
 
 # PlayMode tests
-unity-cli tests play
+u tests play
 
 # Filtering
-unity-cli tests edit --test-names "MyTests.SampleTest"
-unity-cli tests edit --category-names "Unit" "Integration"
-unity-cli tests edit --assembly-names "MyGame.Tests"
+u tests edit --test-names "MyTests.SampleTest"
+u tests edit --category-names "Unit" "Integration"
+u tests edit --assembly-names "MyGame.Tests"
 ```
 
 ### Scene Operations
 
 ```bash
 # Active scene info
-unity-cli scene active
+u scene active
 
 # Hierarchy
-unity-cli scene hierarchy                    # Root only
-unity-cli scene hierarchy --depth 2          # Up to 2 levels
-unity-cli scene hierarchy --iterate-all      # All levels (paging)
+u scene hierarchy                    # Root only
+u scene hierarchy --depth 2          # Up to 2 levels
+u scene hierarchy --iterate-all      # All levels (paging)
 
 # Scene operations
-unity-cli scene load --name MainScene
-unity-cli scene save
-unity-cli scene create --name NewScene --path Assets/Scenes
+u scene load --name MainScene
+u scene save
+u scene create --name NewScene --path Assets/Scenes
 ```
 
 ### GameObject Operations
 
 ```bash
 # Find
-unity-cli gameobject find "Main Camera"
-unity-cli gameobject find "Player" --iterate-all
+u gameobject find "Main Camera"
+u gameobject find "Player" --iterate-all
 
 # Create
-unity-cli gameobject create --name "MyCube" --primitive Cube --position 0,1,0
+u gameobject create --name "MyCube" --primitive Cube --position 0,1,0
 
 # Modify
-unity-cli gameobject modify --name "MyCube" --position 5,0,0 --rotation 0,45,0
+u gameobject modify --name "MyCube" --position 5,0,0 --rotation 0,45,0
 
 # Delete
-unity-cli gameobject delete --name "MyCube"
+u gameobject delete --name "MyCube"
 ```
 
 ### Component Operations
 
 ```bash
 # List components
-unity-cli component list -t "Main Camera"
+u component list -t "Main Camera"
 
 # Inspect component
-unity-cli component inspect -t "Main Camera" -T Camera
+u component inspect -t "Main Camera" -T Camera
 
 # Add component
-unity-cli component add -t "Player" -T Rigidbody
+u component add -t "Player" -T Rigidbody
 
 # Remove component
-unity-cli component remove -t "Player" -T Rigidbody
+u component remove -t "Player" -T Rigidbody
 ```
 
 ### Menu / ContextMenu
 
 ```bash
 # Execute menu
-unity-cli menu exec "Edit/Play"
-unity-cli menu exec "Assets/Refresh"
-unity-cli menu exec "Window/General/Console"
+u menu exec "Edit/Play"
+u menu exec "Assets/Refresh"
+u menu exec "Window/General/Console"
 
 # List menus
-unity-cli menu list                    # All menus
-unity-cli menu list -f "Assets"        # Filter
-unity-cli menu list -f "Play" -l 20    # Limit count
+u menu list                    # All menus
+u menu list -f "Assets"        # Filter
+u menu list -f "Play" -l 20    # Limit count
 
 # Execute ContextMenu (scene objects)
-unity-cli menu context "Reset" -t "/Player"
+u menu context "Reset" -t "/Player"
 
 # Execute ContextMenu (ScriptableObject)
-unity-cli menu context "DoSomething" -t "Assets/Data/Config.asset"
+u menu context "DoSomething" -t "Assets/Data/Config.asset"
 
 # Execute ContextMenu (Prefab)
-unity-cli menu context "Initialize" -t "Assets/Prefabs/Enemy.prefab"
+u menu context "Initialize" -t "Assets/Prefabs/Enemy.prefab"
 ```
 
 ### Asset Operations
 
 ```bash
 # Create Prefab
-unity-cli asset prefab -s "Player" -p "Assets/Prefabs/Player.prefab"
+u asset prefab -s "Player" -p "Assets/Prefabs/Player.prefab"
 
 # Create ScriptableObject
-unity-cli asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
+u asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
 
 # Asset info
-unity-cli asset info "Assets/Data/Config.asset"
+u asset info "Assets/Data/Config.asset"
 ```
 
 ### Material Operations
 
 ```bash
-unity-cli material info --path Assets/Materials/Default.mat
-unity-cli material create --path Assets/Materials/New.mat --shader Standard
-unity-cli material set-color --path Assets/Materials/New.mat --color 1,0,0,1
+u material info --path Assets/Materials/Default.mat
+u material create --path Assets/Materials/New.mat --shader Standard
+u material set-color --path Assets/Materials/New.mat --color 1,0,0,1
 ```
 
 ## Options
@@ -342,7 +345,7 @@ unity-cli material set-color --path Assets/Materials/New.mat --color 1,0,0,1
 
 ```mermaid
 flowchart TB
-    subgraph CLI["unity-cli (Python)"]
+    subgraph CLI["u (Python)"]
         direction TB
         RC[RelayConnection: TCP communication]
         EB[Exponential Backoff: 500ms → 8s]
@@ -384,10 +387,10 @@ See [docs/protocol-spec.md](docs/protocol-spec.md) for details.
 lsof -i :6500
 
 # Check connected instances
-unity-cli instances
+u instances
 
 # Check Unity console for errors
-unity-cli console --types error
+u console --types error
 ```
 
 ## v2.x → v3.0 Migration
@@ -404,8 +407,8 @@ unity-cli console --types error
 unity-mcp --port 6400 state
 
 # v3.0
-unity-cli state  # Via Relay
-unity-cli --instance /path/to/project state  # Specific instance
+u state  # Via Relay
+u --instance /path/to/project state  # Specific instance
 ```
 
 ## License
