@@ -1500,33 +1500,144 @@ def completion(
         str,
         typer.Argument(help="Shell type (bash, zsh, fish, powershell)"),
     ],
+    static: Annotated[
+        bool,
+        typer.Option("--static", "-s", help="Use static completion (faster, needs regeneration)"),
+    ] = False,
 ) -> None:
     """Generate shell completion script.
 
-    Output can be appended to your shell configuration file:
+    Dynamic mode (default): Auto-updates with CLI changes
+        eval "$(unity-cli completion zsh)"
 
-        unity-cli completion bash >> ~/.bashrc
+    Static mode (--static): Faster, but needs regeneration when commands change
+        unity-cli completion zsh --static > ~/.zsh/completions/_unity-cli
 
-        unity-cli completion zsh >> ~/.zshrc
-
-        unity-cli completion fish > ~/.config/fish/completions/unity-cli.fish
-
-        unity-cli completion powershell >> $PROFILE
+    Supported shells: bash, zsh, fish, powershell
     """
-    from unity_cli.cli.completion import SUPPORTED_SHELLS, get_completion_script
-
     shell_lower = shell.lower()
+    supported = ("bash", "zsh", "fish", "powershell")
 
-    if shell_lower not in SUPPORTED_SHELLS:
+    if shell_lower not in supported:
         print_error(
-            f"Unsupported shell: {shell}. Supported: {', '.join(SUPPORTED_SHELLS)}",
+            f"Unsupported shell: {shell}. Supported: {', '.join(supported)}",
             "INVALID_SHELL",
         )
         raise typer.Exit(1) from None
 
-    script = get_completion_script(shell_lower)
-    # Output to stdout (not via Rich console to avoid formatting)
-    print(script)
+    if static:
+        # Use static completion scripts
+        from unity_cli.cli.completion import get_completion_script
+
+        print(get_completion_script(shell_lower))
+    else:
+        # Generate dynamic completion script that calls the CLI
+        scripts = {
+            "zsh": _get_zsh_completion(),
+            "bash": _get_bash_completion(),
+            "fish": _get_fish_completion(),
+            "powershell": _get_powershell_completion(),
+        }
+        print(scripts[shell_lower])
+
+
+def _get_zsh_completion() -> str:
+    """Generate zsh completion script using Typer's internal completion."""
+    return """#compdef unity-cli
+
+_unity_cli_completion() {
+    local -a completions
+    local -a completions_with_descriptions
+    local -a response
+    (( ! $+commands[unity-cli] )) && return 1
+
+    response=("${(@f)$(env COMP_WORDS="${words[*]}" COMP_CWORD=$((CURRENT-1)) _UNITY_CLI_COMPLETE=zsh_complete unity-cli 2>/dev/null)}")
+
+    for key descr in ${(kv)response}; do
+        if [[ "$descr" == "_" ]]; then
+            completions+=("$key")
+        else
+            completions_with_descriptions+=("$key":"$descr")
+        fi
+    done
+
+    if [ -n "$completions_with_descriptions" ]; then
+        _describe -V unsorted completions_with_descriptions -U
+    fi
+
+    if [ -n "$completions" ]; then
+        compadd -U -V unsorted -a completions
+    fi
+}
+
+if [[ $zsh_eval_context[-1] == loadautofun ]]; then
+    # autoload from fpath, call function directly
+    _unity_cli_completion "$@"
+else
+    # eval, register function for later
+    compdef _unity_cli_completion unity-cli
+fi
+"""
+
+
+def _get_bash_completion() -> str:
+    """Generate bash completion script using Typer's internal completion."""
+    return """_unity_cli_completion() {
+    local IFS=$'\\n'
+    COMPREPLY=( $(env COMP_WORDS="${COMP_WORDS[*]}" COMP_CWORD=$COMP_CWORD _UNITY_CLI_COMPLETE=bash_complete unity-cli 2>/dev/null) )
+    return 0
+}
+
+complete -o default -F _unity_cli_completion unity-cli
+"""
+
+
+def _get_fish_completion() -> str:
+    """Generate fish completion script using Typer's internal completion."""
+    return """function _unity_cli_completion
+    set -l response (env _UNITY_CLI_COMPLETE=fish_complete COMP_WORDS=(commandline -cp) COMP_CWORD=(commandline -t) unity-cli 2>/dev/null)
+
+    for completion in $response
+        set -l metadata (string split "," -- $completion)
+
+        if test (count $metadata) -eq 1
+            # No description
+            echo $metadata
+        else
+            echo -e "$metadata[1]\\t$metadata[2]"
+        end
+    end
+end
+
+complete -c unity-cli -f -a "(_unity_cli_completion)"
+"""
+
+
+def _get_powershell_completion() -> str:
+    """Generate PowerShell completion script using Typer's internal completion."""
+    return """$scriptblock = {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $env:_UNITY_CLI_COMPLETE = "powershell_complete"
+    $env:COMP_WORDS = $commandAst.ToString()
+    $env:COMP_CWORD = $cursorPosition
+
+    unity-cli 2>$null | ForEach-Object {
+        $parts = $_ -split ","
+        if ($parts.Count -eq 1) {
+            [System.Management.Automation.CompletionResult]::new($parts[0])
+        } else {
+            [System.Management.Automation.CompletionResult]::new($parts[0], $parts[0], 'ParameterValue', $parts[1])
+        }
+    }
+
+    Remove-Item Env:_UNITY_CLI_COMPLETE
+    Remove-Item Env:COMP_WORDS
+    Remove-Item Env:COMP_CWORD
+}
+
+Register-ArgumentCompleter -Native -CommandName unity-cli -ScriptBlock $scriptblock
+"""
 
 
 # =============================================================================
