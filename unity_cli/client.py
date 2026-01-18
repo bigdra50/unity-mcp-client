@@ -202,7 +202,8 @@ class RelayConnection:
         payload = b"".join(chunks)  # O(n) concatenation
 
         try:
-            return json.loads(payload.decode("utf-8"))
+            result: dict[str, Any] = json.loads(payload.decode("utf-8"))
+            return result
         except json.JSONDecodeError as e:
             raise ProtocolError(f"Invalid JSON response: {e}", "MALFORMED_JSON") from e
 
@@ -345,9 +346,7 @@ class RelayConnection:
         finally:
             sock.close()
 
-    def _handle_response(
-        self, response: dict[str, Any], command: str
-    ) -> dict[str, Any]:
+    def _handle_response(self, response: dict[str, Any], command: str) -> dict[str, Any]:
         """Handle RESPONSE or ERROR message from relay server.
 
         Args:
@@ -383,10 +382,12 @@ class RelayConnection:
         if msg_type == "RESPONSE":
             if not response.get("success", False):
                 raise UnityCLIError(f"{command} failed", "COMMAND_FAILED")
-            return response.get("data", {})
+            data: dict[str, Any] = response.get("data", {})
+            return data
 
         if msg_type == "INSTANCES":
-            return response.get("data", {})
+            data = response.get("data", {})
+            return data
 
         raise ProtocolError(f"Unexpected response type: {msg_type}", "PROTOCOL_ERROR")
 
@@ -441,8 +442,9 @@ class RelayConnection:
         response = self._send_admin_message(message)
 
         if response.get("type") == "INSTANCES":
-            data = response.get("data", {})
-            return data.get("instances", [])
+            data: dict[str, Any] = response.get("data", {})
+            instances: list[dict[str, Any]] = data.get("instances", [])
+            return instances
 
         raise ProtocolError(
             f"Unexpected response type: {response.get('type')}",
@@ -473,9 +475,10 @@ class RelayConnection:
         response = self._send_admin_message(message)
 
         if response.get("type") == "RESPONSE":
-            return response.get("success", False)
+            success: bool = response.get("success", False)
+            return success
         if response.get("type") == "ERROR":
-            error = response.get("error", {})
+            error: dict[str, str] = response.get("error", {})
             raise InstanceError(
                 error.get("message", "Failed to set default instance"),
                 error.get("code", "UNKNOWN_ERROR"),

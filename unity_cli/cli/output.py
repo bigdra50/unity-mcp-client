@@ -292,9 +292,7 @@ def print_test_results_table(results: list[dict[str, Any]]) -> None:
     failed = sum(1 for r in results if r.get("result") == "Failed")
     skipped = sum(1 for r in results if r.get("result") == "Skipped")
 
-    table = Table(
-        title=f"Test Results (Passed: {passed}, Failed: {failed}, Skipped: {skipped})"
-    )
+    table = Table(title=f"Test Results (Passed: {passed}, Failed: {failed}, Skipped: {skipped})")
     table.add_column("Test", style="cyan", overflow="fold")
     table.add_column("Result", justify="center")
     table.add_column("Duration", justify="right")
