@@ -34,8 +34,7 @@ from unity_cli.exceptions import UnityCLIError
 def _on_retry_callback(code: str, message: str, attempt: int, backoff_ms: int) -> None:
     """Callback for retry events - outputs to stderr via Rich."""
     err_console.print(
-        f"[dim][Retry][/dim] {code}: {message} "
-        f"(attempt {attempt}, waiting {backoff_ms}ms)",
+        f"[dim][Retry][/dim] {code}: {message} (attempt {attempt}, waiting {backoff_ms}ms)",
         style="yellow",
     )
 
@@ -338,10 +337,10 @@ def scene_hierarchy(
             page_size=page_size,
             cursor=cursor,
         )
-        # For --json with fields, output items array directly
+        # For --json mode, output items array directly
         if context.json_mode:
             items = result.get("items", [])
-            print_json(items, context.json_mode)
+            print_json(items)
         else:
             print_json(result)
     except UnityCLIError as e:
@@ -486,10 +485,10 @@ def gameobject_find(
 
     try:
         result = context.client.gameobject.find(name=name, instance_id=id)
-        # For --json with fields, output objects array directly
+        # For --json mode, output objects array directly
         if context.json_mode:
             objects = result.get("objects", [])
-            print_json(objects, context.json_mode)
+            print_json(objects)
         else:
             print_json(result)
     except UnityCLIError as e:
@@ -617,10 +616,10 @@ def component_list(
 
     try:
         result = context.client.component.list(target=target, target_id=target_id)
-        # For --json with fields, output components array directly
+        # For --json mode, output components array directly
         if context.json_mode:
             components = result.get("components", [])
-            print_json(components, context.json_mode)
+            print_json(components)
         else:
             print_json(result)
     except UnityCLIError as e:
