@@ -1,14 +1,14 @@
 [project]
-name = "unity-mcp-client"
-version = "2.0.0"
-description = "Python client for Unity MCP - control Unity Editor via TCP protocol"
+name = "unity-cli"
+version = "3.0.0"
+description = "Python client for Unity Bridge Relay Server - control Unity Editor via TCP protocol"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 authors = [
     { name = "bigdra50" }
 ]
-keywords = ["unity", "mcp", "game-development", "editor-control"]
+keywords = ["unity", "cli", "game-development", "editor-control", "automation"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -24,22 +24,25 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/bigdra50/unity-mcp-client"
-Repository = "https://github.com/bigdra50/unity-mcp-client"
+Homepage = "https://github.com/bigdra50/unity-cli"
+Repository = "https://github.com/bigdra50/unity-cli"
 
 [project.scripts]
-unity-mcp = "unity_mcp_client:main"
+unity-cli = "unity_cli:main"
+unity-relay = "relay.server:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = [".", "relay"]
 
 [tool.hatch.build.targets.sdist]
 include = [
+    "unity_cli.py",
     "unity_mcp_client.py",
+    "relay/",
     "README.md",
     "LICENSE",
 ]
