@@ -1,5 +1,10 @@
 # Unity CLI
 
+[![CI](https://github.com/bigdra50/unity-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/bigdra50/unity-cli/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity)](https://unity.com/)
+
 コマンドラインから Unity Editor を操作する CLI ツール。
 
 ## 概要
@@ -26,12 +31,15 @@ unity-cli menu context "DoSomething" -t "/Player"
 - MenuItem / ContextMenu の実行に対応
 - 複数 Unity インスタンスの同時制御
 - ドメインリロード耐性（自動再接続）
+- プロジェクトを適切なバージョンで開く（Unity Hub連携）
+- プロジェクト情報取得（Relay Server不要）
 
 ## 動作要件
 
 - [uv](https://docs.astral.sh/uv/) (Python パッケージマネージャー)
 - Python 3.11+
 - Unity 2021.3+
+- Unity Hub（`open`/`editor`コマンド使用時）
 
 ## クイックスタート
 
@@ -70,6 +78,9 @@ uvx --from git+https://github.com/bigdra50/unity-cli unity-cli console --types e
 # グローバルインストール
 uv tool install git+https://github.com/bigdra50/unity-cli
 
+# インタラクティブUI付き（エディタ選択プロンプト）
+uv tool install "git+https://github.com/bigdra50/unity-cli[interactive]"
+
 # CLIコマンド
 unity-cli state
 unity-cli play
@@ -81,7 +92,61 @@ unity-relay --port 6500
 
 ## CLI コマンド
 
-### 基本操作
+### プロジェクトを開く
+
+```bash
+# プロジェクトを適切なバージョンで開く（ProjectVersion.txt参照）
+unity-cli open ./MyUnityProject
+
+# エディタバージョンを指定
+unity-cli open ./MyUnityProject --editor 2022.3.10f1
+
+# 非インタラクティブモード（CI/スクリプト向け）
+unity-cli open ./MyUnityProject --non-interactive
+
+# 終了まで待機
+unity-cli open ./MyUnityProject --wait
+```
+
+### エディタ管理
+
+```bash
+# インストール済みエディタ一覧
+unity-cli editor list
+
+# エディタインストール
+unity-cli editor install 2022.3.10f1
+
+# モジュール付きでインストール
+unity-cli editor install 2022.3.10f1 --modules android ios webgl
+```
+
+### プロジェクト情報（Relay Server不要）
+
+```bash
+# プロジェクト全情報
+unity-cli project info ./MyUnityProject
+
+# Unityバージョンのみ
+unity-cli project version ./MyUnityProject
+
+# パッケージ一覧
+unity-cli project packages ./MyUnityProject
+
+# タグ・レイヤー
+unity-cli project tags ./MyUnityProject
+
+# 品質設定
+unity-cli project quality ./MyUnityProject
+
+# Assembly Definition一覧
+unity-cli project assemblies ./MyUnityProject
+
+# JSON出力
+unity-cli --json project info ./MyUnityProject
+```
+
+### 基本操作（Relay Server経由）
 
 ```bash
 # エディタ状態確認
@@ -253,32 +318,32 @@ unity-cli material set-color --path Assets/Materials/New.mat --color 1,0,0,1
 
 ## アーキテクチャ
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  unity-cli (Python)                                             │
-│  ├─ RelayConnection: TCP通信                                    │
-│  ├─ Exponential Backoff: 500ms → 8s (max 30s)                  │
-│  └─ request_id: 冪等性保証                                      │
-│                                                                 │
-│         │ TCP:6500                                              │
-│         ▼                                                       │
-│                                                                 │
-│  Relay Server (Python)                                          │
-│  ├─ InstanceRegistry: 複数Unity管理                             │
-│  ├─ RequestCache: 冪等性キャッシュ                              │
-│  ├─ Heartbeat: Single Outstanding PING, 3-retry                │
-│  └─ Queue: FIFO (max 10, デフォルトOFF)                         │
-│                                                                 │
-│         │ TCP:6500                                              │
-│         ▼                                                       │
-│                                                                 │
-│  UnityBridge (C#)                                               │
-│  ├─ RelayClient: 接続管理                                       │
-│  ├─ CommandDispatcher: [BridgeTool]属性でコマンド登録           │
-│  └─ BridgeReloadHandler: ドメインリロード時の再接続             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph CLI["unity-cli (Python)"]
+        direction TB
+        RC[RelayConnection: TCP通信]
+        EB[Exponential Backoff: 500ms → 8s]
+        RID[request_id: 冪等性保証]
+    end
+
+    subgraph Relay["Relay Server (Python)"]
+        direction TB
+        IR[InstanceRegistry: 複数Unity管理]
+        Cache[RequestCache: 冪等性キャッシュ]
+        HB[Heartbeat: Single Outstanding PING]
+        Q[Queue: FIFO max 10]
+    end
+
+    subgraph Unity["UnityBridge (C#)"]
+        direction TB
+        Client[RelayClient: 接続管理]
+        Dispatcher[CommandDispatcher: BridgeTool属性]
+        Reload[BridgeReloadHandler: 再接続]
+    end
+
+    CLI -->|TCP:6500| Relay
+    Relay -->|TCP:6500| Unity
 ```
 
 ## プロトコル仕様

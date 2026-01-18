@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from unity_cli.exceptions import EditorNotFoundError, ProjectError
 from unity_cli.hub.editor import launch_editor

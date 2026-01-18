@@ -53,9 +53,7 @@ class ProjectVersion:
 
         # Parse optional revision: m_EditorVersionWithRevision: 2022.3.10f1 (abc123)
         revision: str | None = None
-        revision_match = re.search(
-            r"m_EditorVersionWithRevision:\s*.+\(([^)]+)\)", content
-        )
+        revision_match = re.search(r"m_EditorVersionWithRevision:\s*.+\(([^)]+)\)", content)
         if revision_match:
             revision = revision_match.group(1).strip()
 
@@ -165,9 +163,7 @@ class BuildSettings:
         scenes: list[BuildScene] = []
 
         # Parse scenes using regex (simple YAML parsing)
-        scene_blocks = re.findall(
-            r"-\s+enabled:\s*(\d+)\s+path:\s*([^\s]+)", content
-        )
+        scene_blocks = re.findall(r"-\s+enabled:\s*(\d+)\s+path:\s*([^\s]+)", content)
         for enabled_str, path in scene_blocks:
             scenes.append(BuildScene(path=path, enabled=enabled_str == "1"))
 
@@ -256,13 +252,9 @@ class ProjectInfo:
                 "width": self.settings.default_screen_width,
                 "height": self.settings.default_screen_height,
             },
-            "build_scenes": [
-                {"path": s.path, "enabled": s.enabled}
-                for s in self.build_settings.scenes
-            ],
+            "build_scenes": [{"path": s.path, "enabled": s.enabled} for s in self.build_settings.scenes],
             "packages": [
-                {"name": p.name, "version": p.version, "local": p.is_local}
-                for p in self.packages.dependencies
+                {"name": p.name, "version": p.version, "local": p.is_local} for p in self.packages.dependencies
             ],
         }
 
@@ -365,6 +357,14 @@ class QualitySettings:
         # Split by "- serializedVersion:" to get each level
         level_blocks = re.split(r"(?=\s+-\s+serializedVersion:)", content)
 
+        def get_int(text: str, key: str, default: int = 0) -> int:
+            m = re.search(rf"{key}:\s*(\d+)", text)
+            return int(m.group(1)) if m else default
+
+        def get_float(text: str, key: str, default: float = 0.0) -> float:
+            m = re.search(rf"{key}:\s*([\d.]+)", text)
+            return float(m.group(1)) if m else default
+
         for block in level_blocks[1:]:  # Skip first (header)
             name_match = re.search(r"name:\s*(.+)", block)
             if not name_match:
@@ -372,22 +372,16 @@ class QualitySettings:
 
             name = name_match.group(1).strip()
 
-            def get_int(key: str, default: int = 0) -> int:
-                m = re.search(rf"{key}:\s*(\d+)", block)
-                return int(m.group(1)) if m else default
-
-            def get_float(key: str, default: float = 0.0) -> float:
-                m = re.search(rf"{key}:\s*([\d.]+)", block)
-                return float(m.group(1)) if m else default
-
-            levels.append(QualityLevel(
-                name=name,
-                shadow_resolution=get_int("shadowResolution"),
-                shadow_distance=get_float("shadowDistance"),
-                vsync_count=get_int("vSyncCount"),
-                lod_bias=get_float("lodBias"),
-                anti_aliasing=get_int("antiAliasing"),
-            ))
+            levels.append(
+                QualityLevel(
+                    name=name,
+                    shadow_resolution=get_int(block, "shadowResolution"),
+                    shadow_distance=get_float(block, "shadowDistance"),
+                    vsync_count=get_int(block, "vSyncCount"),
+                    lod_bias=get_float(block, "lodBias"),
+                    anti_aliasing=get_int(block, "antiAliasing"),
+                )
+            )
 
         return cls(current_quality=current_quality, levels=levels)
 

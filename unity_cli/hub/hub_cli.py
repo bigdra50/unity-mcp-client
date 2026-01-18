@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 from unity_cli.exceptions import HubInstallError, HubNotFoundError
-from unity_cli.hub.paths import InstalledEditor, locate_hub_cli
+from unity_cli.hub.paths import locate_hub_cli
 
 
 @dataclass(frozen=True)

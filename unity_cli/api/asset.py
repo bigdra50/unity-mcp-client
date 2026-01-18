@@ -51,11 +51,14 @@ class AssetAPI:
         Returns:
             Dictionary with created asset info
         """
-        return self._conn.send_request("asset", {
-            "action": "create_scriptable_object",
-            "type": type_name,
-            "path": path,
-        })
+        return self._conn.send_request(
+            "asset",
+            {
+                "action": "create_scriptable_object",
+                "type": type_name,
+                "path": path,
+            },
+        )
 
     def info(self, path: str) -> dict[str, Any]:
         """Get asset information.
@@ -66,7 +69,10 @@ class AssetAPI:
         Returns:
             Dictionary with asset info (name, type, guid, etc.)
         """
-        return self._conn.send_request("asset", {
-            "action": "info",
-            "path": path,
-        })
+        return self._conn.send_request(
+            "asset",
+            {
+                "action": "info",
+                "path": path,
+            },
+        )

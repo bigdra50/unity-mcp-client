@@ -1053,6 +1053,7 @@ def project_packages(
         raise typer.Exit(1) from None
 
     import json
+
     data = json.loads(manifest_file.read_text())
     deps = data.get("dependencies", {})
 
@@ -1067,6 +1068,7 @@ def project_packages(
         print_json(packages)
     else:
         from rich.table import Table
+
         table = Table(title=f"Packages ({len(packages)})")
         table.add_column("Name", style="cyan")
         table.add_column("Version")
@@ -1098,11 +1100,13 @@ def project_tags(
     settings = TagLayerSettings.from_file(path)
 
     if context.json_mode:
-        print_json({
-            "tags": settings.tags,
-            "layers": [{"index": i, "name": n} for i, n in settings.layers],
-            "sorting_layers": settings.sorting_layers,
-        })
+        print_json(
+            {
+                "tags": settings.tags,
+                "layers": [{"index": i, "name": n} for i, n in settings.layers],
+                "sorting_layers": settings.sorting_layers,
+            }
+        )
     else:
         from rich.table import Table
 
@@ -1154,20 +1158,22 @@ def project_quality(
     settings = QualitySettings.from_file(path)
 
     if context.json_mode:
-        print_json({
-            "current_quality": settings.current_quality,
-            "levels": [
-                {
-                    "name": lvl.name,
-                    "shadow_resolution": lvl.shadow_resolution,
-                    "shadow_distance": lvl.shadow_distance,
-                    "vsync_count": lvl.vsync_count,
-                    "lod_bias": lvl.lod_bias,
-                    "anti_aliasing": lvl.anti_aliasing,
-                }
-                for lvl in settings.levels
-            ],
-        })
+        print_json(
+            {
+                "current_quality": settings.current_quality,
+                "levels": [
+                    {
+                        "name": lvl.name,
+                        "shadow_resolution": lvl.shadow_resolution,
+                        "shadow_distance": lvl.shadow_distance,
+                        "vsync_count": lvl.vsync_count,
+                        "lod_bias": lvl.lod_bias,
+                        "anti_aliasing": lvl.anti_aliasing,
+                    }
+                    for lvl in settings.levels
+                ],
+            }
+        )
     else:
         from rich.table import Table
 
@@ -1215,18 +1221,20 @@ def project_assemblies(
     assemblies = find_assembly_definitions(path)
 
     if context.json_mode:
-        print_json([
-            {
-                "name": asm.name,
-                "path": str(asm.path.relative_to(path)),
-                "references": asm.references,
-                "include_platforms": asm.include_platforms,
-                "exclude_platforms": asm.exclude_platforms,
-                "allow_unsafe": asm.allow_unsafe,
-                "auto_referenced": asm.auto_referenced,
-            }
-            for asm in assemblies
-        ])
+        print_json(
+            [
+                {
+                    "name": asm.name,
+                    "path": str(asm.path.relative_to(path)),
+                    "references": asm.references,
+                    "include_platforms": asm.include_platforms,
+                    "exclude_platforms": asm.exclude_platforms,
+                    "allow_unsafe": asm.allow_unsafe,
+                    "auto_referenced": asm.auto_referenced,
+                }
+                for asm in assemblies
+            ]
+        )
     else:
         if not assemblies:
             console.print("[dim]No Assembly Definitions found in Assets/[/dim]")

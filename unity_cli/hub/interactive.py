@@ -17,9 +17,9 @@ def is_tty() -> bool:
 def _has_inquirerpy() -> bool:
     """Check if InquirerPy is available."""
     try:
-        import InquirerPy
+        import importlib.util
 
-        return True
+        return importlib.util.find_spec("InquirerPy") is not None
     except ImportError:
         return False
 
@@ -54,13 +54,13 @@ def prompt_editor_selection(
     for editor in editors:
         choices.append(Choice(value=editor, name=f"Use {editor.version}"))
 
-    result = inquirer.select(
+    selected: InstalledEditor | None = inquirer.select(
         message=f"Unity {required_version} not installed. Choose an action:",
         choices=choices,
         default=None,
     ).execute()
 
-    return result
+    return selected
 
 
 def prompt_confirm(message: str, default: bool = False) -> bool:
@@ -82,4 +82,5 @@ def prompt_confirm(message: str, default: bool = False) -> bool:
 
     from InquirerPy import inquirer
 
-    return inquirer.confirm(message=message, default=default).execute()
+    result: bool = inquirer.confirm(message=message, default=default).execute()
+    return result
