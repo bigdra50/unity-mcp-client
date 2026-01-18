@@ -1365,6 +1365,131 @@ def editor_install(
 
 
 # =============================================================================
+# Selection Command
+# =============================================================================
+
+
+@app.command()
+def selection(ctx: typer.Context) -> None:
+    """Get current editor selection."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.selection.get()
+
+        if context.json_mode:
+            print_json(result)
+        else:
+            count = result.get("count", 0)
+            if count == 0:
+                console.print("[dim]No objects selected[/dim]")
+                return
+
+            console.print(f"[bold]Selected: {count} object(s)[/bold]\n")
+
+            active_go = result.get("activeGameObject")
+            if active_go:
+                console.print("[cyan]Active GameObject:[/cyan]")
+                console.print(f"  Name: {active_go.get('name')}")
+                console.print(f"  Instance ID: {active_go.get('instanceID')}")
+                console.print(f"  Tag: {active_go.get('tag')}")
+                console.print(f"  Layer: {active_go.get('layerName')} ({active_go.get('layer')})")
+                console.print(f"  Path: {active_go.get('scenePath')}")
+
+            active_transform = result.get("activeTransform")
+            if active_transform:
+                pos = active_transform.get("position", [])
+                rot = active_transform.get("rotation", [])
+                scale = active_transform.get("scale", [])
+                console.print("\n[cyan]Transform:[/cyan]")
+                if pos:
+                    console.print(f"  Position: ({pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f})")
+                if rot:
+                    console.print(f"  Rotation: ({rot[0]:.2f}, {rot[1]:.2f}, {rot[2]:.2f})")
+                if scale:
+                    console.print(f"  Scale: ({scale[0]:.2f}, {scale[1]:.2f}, {scale[2]:.2f})")
+
+            game_objects = result.get("gameObjects", [])
+            if len(game_objects) > 1:
+                console.print(f"\n[cyan]All Selected GameObjects ({len(game_objects)}):[/cyan]")
+                for go in game_objects:
+                    console.print(f"  - {go.get('name')} (ID: {go.get('instanceID')})")
+
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
+# Screenshot Command
+# =============================================================================
+
+
+@app.command()
+def screenshot(
+    ctx: typer.Context,
+    source: Annotated[
+        str,
+        typer.Option("--source", "-s", help="Capture source: game, scene, or camera"),
+    ] = "game",
+    path: Annotated[
+        str | None,
+        typer.Option("--path", "-p", help="Output file path"),
+    ] = None,
+    super_size: Annotated[
+        int,
+        typer.Option("--super-size", help="Resolution multiplier (1-4, game only)"),
+    ] = 1,
+    width: Annotated[
+        int | None,
+        typer.Option("--width", "-W", help="Image width (camera only, default: 1920)"),
+    ] = None,
+    height: Annotated[
+        int | None,
+        typer.Option("--height", "-H", help="Image height (camera only, default: 1080)"),
+    ] = None,
+    camera_name: Annotated[
+        str | None,
+        typer.Option("--camera", "-c", help="Camera name (camera only, default: Main Camera)"),
+    ] = None,
+) -> None:
+    """Capture screenshot from GameView, SceneView, or Camera.
+
+    Sources:
+      game   - GameView (async, requires editor focus)
+      scene  - SceneView
+      camera - Camera.Render (sync, focus-independent)
+    """
+    context: CLIContext = ctx.obj
+
+    if source not in ("game", "scene", "camera"):
+        print_error(f"Invalid source: {source}. Use 'game', 'scene', or 'camera'", "INVALID_SOURCE")
+        raise typer.Exit(1) from None
+
+    try:
+        result = context.client.screenshot.capture(
+            source=source,  # type: ignore[arg-type]
+            path=path,
+            super_size=super_size,
+            width=width,
+            height=height,
+            camera=camera_name,
+        )
+
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(f"Screenshot captured: {result.get('path')}")
+            if result.get("note"):
+                console.print(f"[dim]{result.get('note')}[/dim]")
+            if result.get("camera"):
+                console.print(f"[dim]Camera: {result.get('camera')}[/dim]")
+
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
 # Completion Command
 # =============================================================================
 

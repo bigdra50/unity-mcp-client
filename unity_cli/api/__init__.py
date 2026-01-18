@@ -12,6 +12,8 @@ from unity_cli.api.gameobject import GameObjectAPI
 from unity_cli.api.material import MaterialAPI
 from unity_cli.api.menu import MenuAPI
 from unity_cli.api.scene import SceneAPI
+from unity_cli.api.screenshot import ScreenshotAPI
+from unity_cli.api.selection import SelectionAPI
 from unity_cli.api.tests import TestAPI
 
 __all__ = [
@@ -23,5 +25,7 @@ __all__ = [
     "MaterialAPI",
     "MenuAPI",
     "SceneAPI",
+    "ScreenshotAPI",
+    "SelectionAPI",
     "TestAPI",
 ]
