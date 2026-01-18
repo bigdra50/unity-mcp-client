@@ -2,7 +2,7 @@
   "name": "com.bigdra50.unity-bridge",
   "version": "3.1.0",
   "displayName": "Unity Bridge",
-  "description": "Relay Server経由でUnity Editorを外部から制御するためのブリッジクライアント",
+  "description": "Bridge client enabling CLI and automation tools to control Unity Editor via TCP",
   "unity": "2021.3",
   "author": {
     "name": "bigdra50",
