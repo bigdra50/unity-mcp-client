@@ -10,8 +10,6 @@ import argparse
 import asyncio
 import logging
 import signal
-import sys
-import time
 from typing import Any
 
 from .instance_registry import InstanceRegistry, QueuedCommand, UnityInstance
@@ -140,7 +138,7 @@ class RelayServer:
             else:
                 logger.warning(f"Unknown message type: {msg_type}")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"Connection timeout from {peername}")
         except asyncio.IncompleteReadError:
             logger.debug(f"Connection closed by {peername}")
@@ -206,7 +204,7 @@ class RelayServer:
                         timeout=HEARTBEAT_TIMEOUT_MS / 1000,
                     )
                     await self._handle_unity_message(instance, msg)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Check heartbeat timeout
                     if await self.registry.handle_heartbeat_timeout(
                         instance_id, HEARTBEAT_TIMEOUT_MS
@@ -305,7 +303,7 @@ class RelayServer:
                         consecutive_failures = 0
                         logger.debug(f"Heartbeat OK for {instance_id}")
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         consecutive_failures += 1
                         logger.warning(
                             f"Heartbeat timeout for {instance_id} "
@@ -538,7 +536,7 @@ class RelayServer:
                             timeout=timeout_ms / 1000,
                         )
                         return result
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         return ErrorMessage.from_code(
                             request_id,
                             ErrorCode.TIMEOUT,
@@ -591,7 +589,7 @@ class RelayServer:
                 data=result.get("data"),
             ).to_dict()
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ErrorMessage.from_code(
                 request_id,
                 ErrorCode.TIMEOUT,

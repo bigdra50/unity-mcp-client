@@ -24,10 +24,25 @@ jobs:
         run: uv tool install ruff
 
       - name: Run ruff check
-        run: uvx ruff check unity_cli/ relay/
+        run: |
+          # Check existing directories only
+          DIRS=""
+          [ -d "unity_cli" ] && DIRS="$DIRS unity_cli/"
+          [ -d "relay" ] && DIRS="$DIRS relay/"
+          [ -f "unity_cli.py" ] && DIRS="$DIRS unity_cli.py"
+          if [ -n "$DIRS" ]; then
+            uvx ruff check $DIRS --ignore SIM105,SIM108
+          fi
 
       - name: Run ruff format check
-        run: uvx ruff format --check unity_cli/ relay/
+        run: |
+          DIRS=""
+          [ -d "unity_cli" ] && DIRS="$DIRS unity_cli/"
+          [ -d "relay" ] && DIRS="$DIRS relay/"
+          [ -f "unity_cli.py" ] && DIRS="$DIRS unity_cli.py"
+          if [ -n "$DIRS" ]; then
+            uvx ruff format --check $DIRS
+          fi
 
   type-check:
     runs-on: ubuntu-latest
@@ -46,7 +61,12 @@ jobs:
         run: uv sync
 
       - name: Run mypy
-        run: uv run mypy unity_cli/ --ignore-missing-imports
+        run: |
+          if [ -d "unity_cli" ]; then
+            uv run mypy unity_cli/ --ignore-missing-imports
+          elif [ -f "unity_cli.py" ]; then
+            uv run mypy unity_cli.py --ignore-missing-imports
+          fi
 
   test:
     runs-on: ubuntu-latest

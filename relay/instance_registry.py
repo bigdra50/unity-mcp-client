@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 from .protocol import InstanceStatus
 
 if TYPE_CHECKING:
-    from asyncio import StreamReader, StreamWriter
+    pass
 
 logger = logging.getLogger(__name__)
 
