@@ -23,6 +23,12 @@ classifiers = [
 
 dependencies = []
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/bigdra50/unity-cli"
 Repository = "https://github.com/bigdra50/unity-cli"
@@ -64,7 +70,9 @@ select = [
     "SIM", # flake8-simplify
 ]
 ignore = [
-    "E501",  # line too long (handled by formatter)
+    "E501",   # line too long (handled by formatter)
+    "SIM105", # use contextlib.suppress (stylistic)
+    "SIM108", # use ternary operator (stylistic)
 ]
 
 [tool.ruff.format]

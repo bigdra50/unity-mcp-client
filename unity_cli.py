@@ -44,6 +44,7 @@ Usage:
 
 from __future__ import annotations
 
+import builtins
 import json
 import socket
 import struct
@@ -482,7 +483,7 @@ class RelayConnection:
             try:
                 sock.settimeout(self.timeout)
                 sock.connect((self.host, self.port))
-            except socket.error as e:
+            except OSError as e:
                 raise ConnectionError(
                     f"Cannot connect to Relay Server at {self.host}:{self.port}.\n"
                     "Please ensure the relay server is running:\n"
@@ -494,7 +495,7 @@ class RelayConnection:
 
             try:
                 response = self._read_frame(sock)
-            except socket.timeout as e:
+            except builtins.TimeoutError as e:
                 raise TimeoutError(
                     f"Response timed out for '{command}' (timeout: {self.timeout}s)",
                     "TIMEOUT",
@@ -550,7 +551,7 @@ class RelayConnection:
             try:
                 sock.settimeout(self.timeout)
                 sock.connect((self.host, self.port))
-            except socket.error as e:
+            except OSError as e:
                 raise ConnectionError(
                     f"Cannot connect to Relay Server at {self.host}:{self.port}",
                     "CONNECTION_FAILED",
@@ -585,7 +586,7 @@ class RelayConnection:
             try:
                 sock.settimeout(self.timeout)
                 sock.connect((self.host, self.port))
-            except socket.error as e:
+            except OSError as e:
                 raise ConnectionError(
                     f"Cannot connect to Relay Server at {self.host}:{self.port}",
                     "CONNECTION_FAILED",

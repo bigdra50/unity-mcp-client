@@ -31,7 +31,7 @@ jobs:
           [ -d "relay" ] && DIRS="$DIRS relay/"
           [ -f "unity_cli.py" ] && DIRS="$DIRS unity_cli.py"
           if [ -n "$DIRS" ]; then
-            uvx ruff check $DIRS --ignore SIM105,SIM108
+            uvx ruff check $DIRS
           fi
 
       - name: Run ruff format check
