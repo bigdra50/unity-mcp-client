@@ -922,6 +922,441 @@ def config_init(
 
 
 # =============================================================================
+# Project Commands (file-based, no Relay required)
+# =============================================================================
+
+project_app = typer.Typer(help="Project information (file-based, no Relay required)")
+app.add_typer(project_app, name="project")
+
+
+@project_app.command("info")
+def project_info(
+    ctx: typer.Context,
+    path: Annotated[
+        Path,
+        typer.Argument(help="Unity project path"),
+    ] = Path("."),
+) -> None:
+    """Show project information parsed from files.
+
+    Displays: Unity version, product name, company, build scenes, packages.
+    No Relay Server connection required.
+    """
+    from unity_cli.exceptions import ProjectError
+    from unity_cli.hub.project import ProjectInfo
+
+    context: CLIContext = ctx.obj
+
+    try:
+        info = ProjectInfo.from_path(path)
+
+        if context.json_mode:
+            print_json(info.to_dict())
+        else:
+            from rich.panel import Panel
+            from rich.table import Table
+
+            # Basic info
+            console.print(Panel(f"[bold]{info.settings.product_name}[/bold]", subtitle=str(info.path)))
+            console.print(f"Company: {info.settings.company_name}")
+            console.print(f"Version: {info.settings.version}")
+            console.print(f"Unity: {info.unity_version.version}")
+            if info.unity_version.revision:
+                console.print(f"Revision: [dim]{info.unity_version.revision}[/dim]")
+            console.print(f"Screen: {info.settings.default_screen_width}x{info.settings.default_screen_height}")
+            console.print()
+
+            # Build scenes
+            if info.build_settings.scenes:
+                scene_table = Table(title="Build Scenes")
+                scene_table.add_column("#", style="dim")
+                scene_table.add_column("Path")
+                scene_table.add_column("Enabled")
+
+                for i, scene in enumerate(info.build_settings.scenes):
+                    enabled = "[green]✓[/green]" if scene.enabled else "[red]✗[/red]"
+                    scene_table.add_row(str(i), scene.path, enabled)
+                console.print(scene_table)
+                console.print()
+
+            # Packages
+            if info.packages.dependencies:
+                pkg_table = Table(title=f"Packages ({len(info.packages.dependencies)})")
+                pkg_table.add_column("Name", style="cyan")
+                pkg_table.add_column("Version")
+                pkg_table.add_column("Local")
+
+                for pkg in info.packages.dependencies:
+                    local = "[yellow]local[/yellow]" if pkg.is_local else ""
+                    pkg_table.add_row(pkg.name, pkg.version, local)
+                console.print(pkg_table)
+
+    except ProjectError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@project_app.command("version")
+def project_version(
+    ctx: typer.Context,
+    path: Annotated[
+        Path,
+        typer.Argument(help="Unity project path"),
+    ] = Path("."),
+) -> None:
+    """Show Unity version for project."""
+    from unity_cli.exceptions import ProjectVersionError
+    from unity_cli.hub.project import ProjectVersion
+
+    context: CLIContext = ctx.obj
+
+    try:
+        version = ProjectVersion.from_file(path)
+
+        if context.json_mode:
+            print_json({"version": version.version, "revision": version.revision})
+        else:
+            console.print(f"Unity: [cyan]{version.version}[/cyan]")
+            if version.revision:
+                console.print(f"Revision: [dim]{version.revision}[/dim]")
+
+    except ProjectVersionError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@project_app.command("packages")
+def project_packages(
+    ctx: typer.Context,
+    path: Annotated[
+        Path,
+        typer.Argument(help="Unity project path"),
+    ] = Path("."),
+    include_modules: Annotated[
+        bool,
+        typer.Option("--include-modules", help="Include Unity built-in modules"),
+    ] = False,
+) -> None:
+    """List installed packages from manifest.json."""
+    from unity_cli.hub.project import is_unity_project
+
+    context: CLIContext = ctx.obj
+    path = path.resolve()
+
+    if not is_unity_project(path):
+        print_error(f"Not a valid Unity project: {path}", "INVALID_PROJECT")
+        raise typer.Exit(1) from None
+
+    manifest_file = path / "Packages/manifest.json"
+    if not manifest_file.exists():
+        print_error("manifest.json not found", "MANIFEST_NOT_FOUND")
+        raise typer.Exit(1) from None
+
+    import json
+    data = json.loads(manifest_file.read_text())
+    deps = data.get("dependencies", {})
+
+    packages = []
+    for name, version in sorted(deps.items()):
+        if not include_modules and name.startswith("com.unity.modules."):
+            continue
+        is_local = version.startswith("file:")
+        packages.append({"name": name, "version": version, "local": is_local})
+
+    if context.json_mode:
+        print_json(packages)
+    else:
+        from rich.table import Table
+        table = Table(title=f"Packages ({len(packages)})")
+        table.add_column("Name", style="cyan")
+        table.add_column("Version")
+
+        for pkg in packages:
+            version_str = f"[yellow]{pkg['version']}[/yellow]" if pkg["local"] else pkg["version"]
+            table.add_row(pkg["name"], version_str)
+        console.print(table)
+
+
+@project_app.command("tags")
+def project_tags(
+    ctx: typer.Context,
+    path: Annotated[
+        Path,
+        typer.Argument(help="Unity project path"),
+    ] = Path("."),
+) -> None:
+    """Show tags, layers, and sorting layers."""
+    from unity_cli.hub.project import TagLayerSettings, is_unity_project
+
+    context: CLIContext = ctx.obj
+    path = path.resolve()
+
+    if not is_unity_project(path):
+        print_error(f"Not a valid Unity project: {path}", "INVALID_PROJECT")
+        raise typer.Exit(1) from None
+
+    settings = TagLayerSettings.from_file(path)
+
+    if context.json_mode:
+        print_json({
+            "tags": settings.tags,
+            "layers": [{"index": i, "name": n} for i, n in settings.layers],
+            "sorting_layers": settings.sorting_layers,
+        })
+    else:
+        from rich.table import Table
+
+        # Tags
+        if settings.tags:
+            console.print("[bold]Tags:[/bold]")
+            for tag in settings.tags:
+                console.print(f"  - {tag}")
+            console.print()
+        else:
+            console.print("[dim]No custom tags[/dim]")
+            console.print()
+
+        # Layers
+        layer_table = Table(title="Layers")
+        layer_table.add_column("#", style="dim", width=3)
+        layer_table.add_column("Name", style="cyan")
+
+        for idx, name in settings.layers:
+            layer_table.add_row(str(idx), name)
+        console.print(layer_table)
+        console.print()
+
+        # Sorting Layers
+        if settings.sorting_layers:
+            console.print("[bold]Sorting Layers:[/bold]")
+            for i, layer in enumerate(settings.sorting_layers):
+                console.print(f"  {i}: {layer}")
+
+
+@project_app.command("quality")
+def project_quality(
+    ctx: typer.Context,
+    path: Annotated[
+        Path,
+        typer.Argument(help="Unity project path"),
+    ] = Path("."),
+) -> None:
+    """Show quality settings."""
+    from unity_cli.hub.project import QualitySettings, is_unity_project
+
+    context: CLIContext = ctx.obj
+    path = path.resolve()
+
+    if not is_unity_project(path):
+        print_error(f"Not a valid Unity project: {path}", "INVALID_PROJECT")
+        raise typer.Exit(1) from None
+
+    settings = QualitySettings.from_file(path)
+
+    if context.json_mode:
+        print_json({
+            "current_quality": settings.current_quality,
+            "levels": [
+                {
+                    "name": lvl.name,
+                    "shadow_resolution": lvl.shadow_resolution,
+                    "shadow_distance": lvl.shadow_distance,
+                    "vsync_count": lvl.vsync_count,
+                    "lod_bias": lvl.lod_bias,
+                    "anti_aliasing": lvl.anti_aliasing,
+                }
+                for lvl in settings.levels
+            ],
+        })
+    else:
+        from rich.table import Table
+
+        table = Table(title=f"Quality Levels (current: {settings.current_quality})")
+        table.add_column("#", style="dim", width=3)
+        table.add_column("Name", style="cyan")
+        table.add_column("Shadow Res")
+        table.add_column("Shadow Dist")
+        table.add_column("VSync")
+        table.add_column("LOD Bias")
+        table.add_column("AA")
+
+        for i, lvl in enumerate(settings.levels):
+            marker = "[green]►[/green]" if i == settings.current_quality else " "
+            table.add_row(
+                f"{marker}{i}",
+                lvl.name,
+                str(lvl.shadow_resolution),
+                str(lvl.shadow_distance),
+                str(lvl.vsync_count),
+                str(lvl.lod_bias),
+                str(lvl.anti_aliasing),
+            )
+        console.print(table)
+
+
+@project_app.command("assemblies")
+def project_assemblies(
+    ctx: typer.Context,
+    path: Annotated[
+        Path,
+        typer.Argument(help="Unity project path"),
+    ] = Path("."),
+) -> None:
+    """List Assembly Definitions (.asmdef) in Assets/."""
+    from unity_cli.hub.project import find_assembly_definitions, is_unity_project
+
+    context: CLIContext = ctx.obj
+    path = path.resolve()
+
+    if not is_unity_project(path):
+        print_error(f"Not a valid Unity project: {path}", "INVALID_PROJECT")
+        raise typer.Exit(1) from None
+
+    assemblies = find_assembly_definitions(path)
+
+    if context.json_mode:
+        print_json([
+            {
+                "name": asm.name,
+                "path": str(asm.path.relative_to(path)),
+                "references": asm.references,
+                "include_platforms": asm.include_platforms,
+                "exclude_platforms": asm.exclude_platforms,
+                "allow_unsafe": asm.allow_unsafe,
+                "auto_referenced": asm.auto_referenced,
+            }
+            for asm in assemblies
+        ])
+    else:
+        if not assemblies:
+            console.print("[dim]No Assembly Definitions found in Assets/[/dim]")
+            return
+
+        from rich.table import Table
+
+        table = Table(title=f"Assembly Definitions ({len(assemblies)})")
+        table.add_column("Name", style="cyan")
+        table.add_column("Path", style="dim")
+        table.add_column("Refs", justify="right")
+        table.add_column("Unsafe")
+
+        for asm in assemblies:
+            rel_path = asm.path.relative_to(path)
+            unsafe = "[yellow]✓[/yellow]" if asm.allow_unsafe else ""
+            table.add_row(asm.name, str(rel_path), str(len(asm.references)), unsafe)
+        console.print(table)
+
+
+# =============================================================================
+# Open Command
+# =============================================================================
+
+
+@app.command("open")
+def open_project(
+    path: Annotated[Path, typer.Argument(help="Unity project path")],
+    editor_version: Annotated[
+        str | None,
+        typer.Option("--editor", "-e", help="Override editor version"),
+    ] = None,
+    non_interactive: Annotated[
+        bool,
+        typer.Option("--non-interactive", "-y", help="Fail instead of prompting"),
+    ] = False,
+    wait: Annotated[
+        bool,
+        typer.Option("--wait", "-w", help="Wait for editor to close"),
+    ] = False,
+) -> None:
+    """Open Unity project with appropriate editor version.
+
+    Reads ProjectSettings/ProjectVersion.txt to detect required version.
+    If version not installed, prompts for action.
+    """
+    from unity_cli.exceptions import EditorNotFoundError, ProjectError
+    from unity_cli.hub.service import HubService
+
+    try:
+        service = HubService()
+        service.open_project(
+            project_path=path,
+            editor_override=editor_version,
+            non_interactive=non_interactive,
+            wait=wait,
+        )
+        print_success(f"Opened project: {path}")
+    except (ProjectError, EditorNotFoundError) as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
+# Editor Commands (Unity Hub integration)
+# =============================================================================
+
+editor_app = typer.Typer(help="Unity Editor management (via Hub)")
+app.add_typer(editor_app, name="editor")
+
+
+@editor_app.command("list")
+def editor_list(ctx: typer.Context) -> None:
+    """List installed Unity editors."""
+    from unity_cli.hub.paths import get_installed_editors
+
+    context: CLIContext = ctx.obj
+    editors = get_installed_editors()
+
+    if context.json_mode:
+        data = [{"version": e.version, "path": str(e.path)} for e in editors]
+        print_json(data)
+    else:
+        if not editors:
+            console.print("[dim]No Unity editors found[/dim]")
+            return
+
+        from rich.table import Table
+
+        table = Table(title=f"Installed Editors ({len(editors)})")
+        table.add_column("Version", style="cyan")
+        table.add_column("Path", style="dim")
+
+        for editor in editors:
+            table.add_row(editor.version, str(editor.path))
+
+        console.print(table)
+
+
+@editor_app.command("install")
+def editor_install(
+    version: Annotated[str, typer.Argument(help="Unity version to install")],
+    modules: Annotated[
+        list[str] | None,
+        typer.Option("--modules", "-m", help="Modules to install"),
+    ] = None,
+    changeset: Annotated[
+        str | None,
+        typer.Option("--changeset", "-c", help="Changeset for non-release versions"),
+    ] = None,
+) -> None:
+    """Install Unity Editor via Hub CLI.
+
+    Example: unity-cli editor install 2022.3.10f1 --modules android ios
+    """
+    from unity_cli.exceptions import HubError
+    from unity_cli.hub.hub_cli import HubCLI
+
+    try:
+        hub = HubCLI()
+        hub.install_editor(version=version, modules=modules, changeset=changeset)
+        print_success(f"Installing Unity {version}")
+        if modules:
+            print_success(f"With modules: {', '.join(modules)}")
+    except HubError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
