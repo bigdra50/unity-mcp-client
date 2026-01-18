@@ -190,9 +190,7 @@ class RelayServer:
         await write_frame(writer, response.to_dict())
 
         # Start heartbeat task
-        heartbeat_task = asyncio.create_task(
-            self._heartbeat_loop(instance_id)
-        )
+        heartbeat_task = asyncio.create_task(self._heartbeat_loop(instance_id))
         self._heartbeat_tasks[instance_id] = heartbeat_task
 
         # Handle messages from Unity
@@ -206,9 +204,7 @@ class RelayServer:
                     await self._handle_unity_message(instance, msg)
                 except TimeoutError:
                     # Check heartbeat timeout
-                    if await self.registry.handle_heartbeat_timeout(
-                        instance_id, HEARTBEAT_TIMEOUT_MS
-                    ):
+                    if await self.registry.handle_heartbeat_timeout(instance_id, HEARTBEAT_TIMEOUT_MS):
                         break
         finally:
             # Cleanup
@@ -295,10 +291,7 @@ class RelayServer:
 
                     # Wait for PONG with timeout
                     try:
-                        await asyncio.wait_for(
-                            pong_event.wait(),
-                            timeout=timeout_ms / 1000
-                        )
+                        await asyncio.wait_for(pong_event.wait(), timeout=timeout_ms / 1000)
                         # PONG received - reset failure counter
                         consecutive_failures = 0
                         logger.debug(f"Heartbeat OK for {instance_id}")
@@ -306,15 +299,11 @@ class RelayServer:
                     except TimeoutError:
                         consecutive_failures += 1
                         logger.warning(
-                            f"Heartbeat timeout for {instance_id} "
-                            f"({consecutive_failures}/{HEARTBEAT_MAX_RETRIES})"
+                            f"Heartbeat timeout for {instance_id} ({consecutive_failures}/{HEARTBEAT_MAX_RETRIES})"
                         )
 
                         if consecutive_failures >= HEARTBEAT_MAX_RETRIES:
-                            logger.error(
-                                f"Heartbeat failed {HEARTBEAT_MAX_RETRIES} times, "
-                                f"disconnecting {instance_id}"
-                            )
+                            logger.error(f"Heartbeat failed {HEARTBEAT_MAX_RETRIES} times, disconnecting {instance_id}")
                             break
 
                 except Exception as e:
@@ -427,9 +416,7 @@ class RelayServer:
         # Use request cache for idempotency
         return await self.request_cache.handle_request(
             request_id,
-            lambda: self._execute_command(
-                request_id, instance_id, command, params, timeout_ms
-            ),
+            lambda: self._execute_command(request_id, instance_id, command, params, timeout_ms),
         )
 
     async def _execute_command(
@@ -497,8 +484,7 @@ class RelayServer:
             return ErrorMessage.from_code(
                 request_id,
                 ErrorCode.CAPABILITY_NOT_SUPPORTED,
-                f"Command '{command}' not supported by instance. "
-                f"Available: {', '.join(instance.capabilities)}",
+                f"Command '{command}' not supported by instance. Available: {', '.join(instance.capabilities)}",
             ).to_dict()
 
         if instance.status == InstanceStatus.RELOADING:
@@ -526,8 +512,7 @@ class RelayServer:
 
                 if instance.enqueue_command(queued_cmd):
                     logger.info(
-                        f"[{request_id}] Command queued for {instance.instance_id} "
-                        f"(queue size: {instance.queue_size})"
+                        f"[{request_id}] Command queued for {instance.instance_id} (queue size: {instance.queue_size})"
                     )
                     # Wait for result from queue processing
                     try:

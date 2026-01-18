@@ -27,6 +27,7 @@ QUEUE_ENABLED = False  # Default: disabled for simplicity
 
 class QueuedCommand(NamedTuple):
     """A command waiting in the queue"""
+
     request_id: str
     command: str
     params: dict[str, Any]
@@ -54,11 +55,7 @@ class UnityInstance:
 
     @property
     def is_connected(self) -> bool:
-        return (
-            self.writer is not None
-            and not self.writer.is_closing()
-            and self.status != InstanceStatus.DISCONNECTED
-        )
+        return self.writer is not None and not self.writer.is_closing() and self.status != InstanceStatus.DISCONNECTED
 
     @property
     def is_available(self) -> bool:
@@ -101,9 +98,7 @@ class UnityInstance:
         elif old_status == InstanceStatus.RELOADING:
             self.reloading_since = None
 
-        logger.debug(
-            f"Instance {self.instance_id}: {old_status.value} -> {status.value}"
-        )
+        logger.debug(f"Instance {self.instance_id}: {old_status.value} -> {status.value}")
 
     def enqueue_command(self, cmd: QueuedCommand) -> bool:
         """
@@ -115,20 +110,14 @@ class UnityInstance:
         if self.is_queue_full:
             return False
         self.command_queue.append(cmd)
-        logger.debug(
-            f"Enqueued command {cmd.request_id} for {self.instance_id} "
-            f"(queue size: {self.queue_size})"
-        )
+        logger.debug(f"Enqueued command {cmd.request_id} for {self.instance_id} (queue size: {self.queue_size})")
         return True
 
     def dequeue_command(self) -> QueuedCommand | None:
         """Get the next command from the queue (FIFO)."""
         if self.command_queue:
             cmd = self.command_queue.popleft()
-            logger.debug(
-                f"Dequeued command {cmd.request_id} for {self.instance_id} "
-                f"(queue size: {self.queue_size})"
-            )
+            logger.debug(f"Dequeued command {cmd.request_id} for {self.instance_id} (queue size: {self.queue_size})")
             return cmd
         return None
 
@@ -197,8 +186,7 @@ class InstanceRegistry:
             if instance_id in self._instances:
                 old_instance = self._instances[instance_id]
                 logger.info(
-                    f"Takeover: Replacing existing instance {instance_id} "
-                    f"(old status: {old_instance.status.value})"
+                    f"Takeover: Replacing existing instance {instance_id} (old status: {old_instance.status.value})"
                 )
                 await old_instance.close_connection()
 
@@ -219,10 +207,7 @@ class InstanceRegistry:
                 self._default_instance_id = instance_id
                 logger.info(f"Set default instance: {instance_id}")
 
-            logger.info(
-                f"Registered instance: {instance_id} "
-                f"(project: {project_name}, unity: {unity_version})"
-            )
+            logger.info(f"Registered instance: {instance_id} (project: {project_name}, unity: {unity_version})")
             return instance
 
     async def unregister(self, instance_id: str) -> bool:
@@ -278,9 +263,7 @@ class InstanceRegistry:
             for instance in self._instances.values()
         ]
 
-    def get_instance_for_request(
-        self, instance_id: str | None = None
-    ) -> UnityInstance | None:
+    def get_instance_for_request(self, instance_id: str | None = None) -> UnityInstance | None:
         """
         Get the instance to handle a request.
 
@@ -310,15 +293,11 @@ class InstanceRegistry:
             self._default_instance_id = None
             logger.info("Closed all instances")
 
-    def get_instances_by_status(
-        self, status: InstanceStatus
-    ) -> list[UnityInstance]:
+    def get_instances_by_status(self, status: InstanceStatus) -> list[UnityInstance]:
         """Get all instances with a specific status"""
         return [i for i in self._instances.values() if i.status == status]
 
-    async def handle_heartbeat_timeout(
-        self, instance_id: str, timeout_ms: int = 15000
-    ) -> bool:
+    async def handle_heartbeat_timeout(self, instance_id: str, timeout_ms: int = 15000) -> bool:
         """
         Check if an instance has timed out on heartbeat.
         Returns True if the instance was disconnected due to timeout.
@@ -335,8 +314,7 @@ class InstanceRegistry:
 
         if elapsed > timeout_ms:
             logger.warning(
-                f"Instance {instance_id} heartbeat timeout "
-                f"(elapsed: {elapsed:.0f}ms, timeout: {timeout_ms}ms)"
+                f"Instance {instance_id} heartbeat timeout (elapsed: {elapsed:.0f}ms, timeout: {timeout_ms}ms)"
             )
             instance.set_status(InstanceStatus.DISCONNECTED)
             return True

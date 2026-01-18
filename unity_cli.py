@@ -244,6 +244,7 @@ class UnityCLIError(Exception):
 
     def __init__(self, message: str, code: str | None = None):
         super().__init__(message)
+        self.message = message
         self.code = code
 
 
@@ -381,7 +382,8 @@ class RelayConnection:
             remaining -= len(chunk)
 
         try:
-            return json.loads(payload.decode("utf-8"))
+            result: dict[str, Any] = json.loads(payload.decode("utf-8"))
+            return result
         except json.JSONDecodeError as e:
             raise ProtocolError(f"Invalid JSON response: {e}", "MALFORMED_JSON") from e
 
@@ -437,7 +439,7 @@ class RelayConnection:
                     raise
 
                 # Calculate backoff: min(initial * 2^attempt, max)
-                backoff_ms = min(retry_initial_ms * (2 ** attempt), retry_max_ms)
+                backoff_ms = min(retry_initial_ms * (2**attempt), retry_max_ms)
 
                 # Check if retry would exceed max time
                 if elapsed_ms + backoff_ms >= retry_max_time_ms:
@@ -449,8 +451,7 @@ class RelayConnection:
 
                 # Log retry attempt
                 print(
-                    f"[Retry] {error_code}: {e.message} "
-                    f"(attempt {attempt + 1}, waiting {backoff_ms}ms)",
+                    f"[Retry] {error_code}: {e.message} (attempt {attempt + 1}, waiting {backoff_ms}ms)",
                     file=sys.stderr,
                 )
 
@@ -528,10 +529,12 @@ class RelayConnection:
         if msg_type == "RESPONSE":
             if not response.get("success", False):
                 raise UnityCLIError(f"{command} failed", "COMMAND_FAILED")
-            return response.get("data", {})
+            data: dict[str, Any] = response.get("data", {})
+            return data
 
         if msg_type == "INSTANCES":
-            return response.get("data", {})
+            data = response.get("data", {})
+            return data
 
         raise ProtocolError(f"Unexpected response type: {msg_type}", "PROTOCOL_ERROR")
 
@@ -561,8 +564,9 @@ class RelayConnection:
             response = self._read_frame(sock)
 
             if response.get("type") == "INSTANCES":
-                data = response.get("data", {})
-                return data.get("instances", [])
+                data: dict[str, Any] = response.get("data", {})
+                instances: list[dict[str, Any]] = data.get("instances", [])
+                return instances
 
             raise ProtocolError(f"Unexpected response type: {response.get('type')}", "PROTOCOL_ERROR")
 
@@ -596,9 +600,10 @@ class RelayConnection:
             response = self._read_frame(sock)
 
             if response.get("type") == "RESPONSE":
-                return response.get("success", False)
+                success: bool = response.get("success", False)
+                return success
             if response.get("type") == "ERROR":
-                error = response.get("error", {})
+                error: dict[str, str] = response.get("error", {})
                 raise InstanceError(
                     error.get("message", "Failed to set default instance"),
                     error.get("code", "UNKNOWN_ERROR"),
@@ -1129,7 +1134,9 @@ Examples:
     parser.add_argument("command", help="Command to execute")
     parser.add_argument("args", nargs="*", help="Command arguments")
     parser.add_argument("--relay-host", default=None, help=f"Relay server host (default: {config.relay_host})")
-    parser.add_argument("--relay-port", type=int, default=None, help=f"Relay server port (default: {config.relay_port})")
+    parser.add_argument(
+        "--relay-port", type=int, default=None, help=f"Relay server port (default: {config.relay_port})"
+    )
     parser.add_argument("--instance", default=None, help="Target Unity instance (project path)")
     parser.add_argument("--timeout", type=float, default=None, help=f"Timeout in seconds (default: {config.timeout})")
     parser.add_argument("--count", type=int, default=None, help=f"Number of logs (default: {config.log_count})")
@@ -1391,7 +1398,9 @@ Examples:
 
         else:
             print(f"Unknown command: {args.command}")
-            print("Available: config, instances, state, play, stop, pause, console, clear, refresh, tests, scene, gameobject, component")
+            print(
+                "Available: config, instances, state, play, stop, pause, console, clear, refresh, tests, scene, gameobject, component"
+            )
             sys.exit(1)
 
     except UnityCLIError as e:

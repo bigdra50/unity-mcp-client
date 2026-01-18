@@ -69,11 +69,7 @@ class RequestCache:
     async def _cleanup_expired(self) -> None:
         """Remove expired cache entries"""
         async with self._lock:
-            expired_keys = [
-                key
-                for key, entry in self._cache.items()
-                if entry.is_expired(self._ttl_seconds)
-            ]
+            expired_keys = [key for key, entry in self._cache.items() if entry.is_expired(self._ttl_seconds)]
             for key in expired_keys:
                 del self._cache[key]
 

@@ -303,9 +303,7 @@ class ErrorMessage(Message):
         return d
 
     @classmethod
-    def from_code(
-        cls, request_id: str, code: ErrorCode, message: str
-    ) -> ErrorMessage:
+    def from_code(cls, request_id: str, code: ErrorCode, message: str) -> ErrorMessage:
         return cls(id=request_id, error={"code": code.value, "message": message})
 
 
@@ -327,9 +325,7 @@ class InstancesMessage(Message):
 # Framing functions
 
 
-async def write_frame(
-    writer: asyncio.StreamWriter, payload: dict[str, Any]
-) -> None:
+async def write_frame(writer: asyncio.StreamWriter, payload: dict[str, Any]) -> None:
     """Write a framed message: 4-byte big-endian length + JSON payload"""
     payload_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     length = len(payload_bytes)
