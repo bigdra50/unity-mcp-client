@@ -92,6 +92,26 @@ unity-cli console --types error --count 10
 unity-relay --port 6500
 ```
 
+## シェル補完
+
+タブ補完を有効にする:
+
+```bash
+# Bash
+unity-cli completion bash >> ~/.bashrc
+
+# Zsh
+unity-cli completion zsh >> ~/.zshrc
+
+# Fish
+unity-cli completion fish > ~/.config/fish/completions/unity-cli.fish
+
+# PowerShell
+unity-cli completion powershell >> $PROFILE
+```
+
+シェルを再起動するか、設定ファイルをsourceして有効化。
+
 ## CLI コマンド
 
 ### プロジェクトを開く

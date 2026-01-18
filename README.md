@@ -92,6 +92,26 @@ unity-cli console --types error --count 10
 unity-relay --port 6500
 ```
 
+## Shell Completion
+
+Enable tab completion for your shell:
+
+```bash
+# Bash
+unity-cli completion bash >> ~/.bashrc
+
+# Zsh
+unity-cli completion zsh >> ~/.zshrc
+
+# Fish
+unity-cli completion fish > ~/.config/fish/completions/unity-cli.fish
+
+# PowerShell
+unity-cli completion powershell >> $PROFILE
+```
+
+Restart your shell or source the config file to enable completion.
+
 ## CLI Commands
 
 ### Open Project

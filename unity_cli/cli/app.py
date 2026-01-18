@@ -1365,6 +1365,46 @@ def editor_install(
 
 
 # =============================================================================
+# Completion Command
+# =============================================================================
+
+
+@app.command()
+def completion(
+    shell: Annotated[
+        str,
+        typer.Argument(help="Shell type (bash, zsh, fish, powershell)"),
+    ],
+) -> None:
+    """Generate shell completion script.
+
+    Output can be appended to your shell configuration file:
+
+        unity-cli completion bash >> ~/.bashrc
+
+        unity-cli completion zsh >> ~/.zshrc
+
+        unity-cli completion fish > ~/.config/fish/completions/unity-cli.fish
+
+        unity-cli completion powershell >> $PROFILE
+    """
+    from unity_cli.cli.completion import SUPPORTED_SHELLS, get_completion_script
+
+    shell_lower = shell.lower()
+
+    if shell_lower not in SUPPORTED_SHELLS:
+        print_error(
+            f"Unsupported shell: {shell}. Supported: {', '.join(SUPPORTED_SHELLS)}",
+            "INVALID_SHELL",
+        )
+        raise typer.Exit(1) from None
+
+    script = get_completion_script(shell_lower)
+    # Output to stdout (not via Rich console to avoid formatting)
+    print(script)
+
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
