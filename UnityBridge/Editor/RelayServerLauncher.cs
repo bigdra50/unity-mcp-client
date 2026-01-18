@@ -525,5 +525,44 @@ namespace UnityBridge
 
             return ("Not Available", "Install uv or set custom command");
         }
+
+        /// <summary>
+        /// Get the command that will be executed to start the server.
+        /// Returns null if no valid command can be constructed.
+        /// </summary>
+        public string GetServerCommand(int port = ProtocolConstants.DefaultPort)
+        {
+            // Priority 1: Custom command
+            var customCmd = CustomCommand;
+            if (!string.IsNullOrEmpty(customCmd))
+            {
+                return customCmd.Replace("{port}", port.ToString());
+            }
+
+#if UNITY_BRIDGE_LOCAL_DEV
+            // Priority 2: Local development
+            if (!string.IsNullOrEmpty(_localDevPath))
+            {
+                if (_uvPath != null)
+                {
+                    return $"cd \"{_localDevPath}\" && uv run python -m relay.server --port {port}";
+                }
+
+                var python = FindExecutable("python3") ?? FindExecutable("python");
+                if (python != null)
+                {
+                    return $"cd \"{_localDevPath}\" && python -m relay.server --port {port}";
+                }
+            }
+#endif
+
+            // Priority 3: uvx (production)
+            if (_uvPath != null)
+            {
+                return $"uvx --from {PackageSource} unity-relay --port {port}";
+            }
+
+            return null;
+        }
     }
 }

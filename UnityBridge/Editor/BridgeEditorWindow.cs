@@ -104,6 +104,9 @@ namespace UnityBridge
             var (mode, detail) = launcher.GetDetectedMode();
             EditorGUILayout.LabelField($"Mode: {mode}", EditorStyles.miniLabel);
 
+            // Command preview
+            DrawServerCommandPreview(launcher);
+
             // Start/Stop buttons
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -150,6 +153,41 @@ namespace UnityBridge
 
                 EditorGUI.indentLevel--;
             }
+        }
+
+        private void DrawServerCommandPreview(RelayServerLauncher launcher)
+        {
+            var command = launcher.GetServerCommand(_port);
+            if (string.IsNullOrEmpty(command))
+            {
+                EditorGUILayout.HelpBox("uv is not installed or no custom command is set.", UnityEditor.MessageType.Warning);
+                return;
+            }
+
+            EditorGUILayout.Space(5);
+            EditorGUILayout.LabelField("Command to execute:", EditorStyles.miniLabel);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                // Selectable text field for copying
+                var textFieldStyle = new GUIStyle(EditorStyles.textField)
+                {
+                    wordWrap = true,
+                    fixedHeight = 0
+                };
+                var height = textFieldStyle.CalcHeight(new GUIContent(command), EditorGUIUtility.currentViewWidth - 70);
+                EditorGUILayout.SelectableLabel(command, textFieldStyle, GUILayout.Height(Mathf.Max(height, 20)));
+
+                if (GUILayout.Button("Copy", GUILayout.Width(50), GUILayout.Height(20)))
+                {
+                    EditorGUIUtility.systemCopyBuffer = command;
+                    _statusMessage = "Command copied to clipboard";
+                    _statusMessageType = MessageType.Info;
+                }
+            }
+
+            EditorGUILayout.LabelField("Paste this command in terminal to run manually.", EditorStyles.miniLabel);
+            EditorGUILayout.Space(5);
         }
 
         private void DrawConnectionSection()
