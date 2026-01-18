@@ -13,8 +13,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal
-
+from typing import Any
 
 # Constants
 PROTOCOL_VERSION = "1.0"
@@ -306,7 +305,7 @@ class ErrorMessage(Message):
     @classmethod
     def from_code(
         cls, request_id: str, code: ErrorCode, message: str
-    ) -> "ErrorMessage":
+    ) -> ErrorMessage:
         return cls(id=request_id, error={"code": code.value, "message": message})
 
 
