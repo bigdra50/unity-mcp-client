@@ -26,11 +26,11 @@ unity-cli instances
 unity-relay --port 6500
 
 # Run directly without install
-python unity_cli.py state
+python -m unity_cli state
 python -m relay.server --port 6500
 
 # Test with uvx (after pushing to GitHub)
-uvx --from git+https://github.com/bigdra50/unity-mcp-client unity-cli state
+uvx --from git+https://github.com/bigdra50/unity-cli unity-cli state
 ```
 
 ## Architecture
@@ -83,7 +83,7 @@ relay/
 ├── instance_registry.py # Unity instance management, queue
 └── request_cache.py    # Idempotency cache (success only)
 
-unity_cli.py            # CLI client with exponential backoff
+unity_cli/              # CLI package (Typer + Rich)
 
 UnityBridge/
 ├── Editor/
@@ -132,6 +132,6 @@ See `docs/protocol-spec.md` for full specification.
 python -m pytest tests/
 
 # Verify Unity compilation
-python unity_cli.py refresh
-python unity_cli.py console --types error
+unity-cli refresh
+unity-cli console --types error
 ```

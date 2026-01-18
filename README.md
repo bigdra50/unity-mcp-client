@@ -29,7 +29,7 @@ UnityプロジェクトにUnityBridgeパッケージを追加:
 
 ```
 Window > Package Manager > + > Add package from git URL...
-https://github.com/bigdra50/unity-mcp-client.git?path=UnityBridge
+https://github.com/bigdra50/unity-cli.git?path=UnityBridge
 ```
 
 ### 2. 接続
@@ -42,21 +42,21 @@ Unity Editorで `Window > Unity Bridge` を開き:
 
 ```bash
 # uvx で直接実行（インストール不要）
-uvx --from git+https://github.com/bigdra50/unity-mcp-client unity-cli state
+uvx --from git+https://github.com/bigdra50/unity-cli unity-cli state
 
 # Play Mode制御
-uvx --from git+https://github.com/bigdra50/unity-mcp-client unity-cli play
-uvx --from git+https://github.com/bigdra50/unity-mcp-client unity-cli stop
+uvx --from git+https://github.com/bigdra50/unity-cli unity-cli play
+uvx --from git+https://github.com/bigdra50/unity-cli unity-cli stop
 
 # コンソールログ取得
-uvx --from git+https://github.com/bigdra50/unity-mcp-client unity-cli console --types error
+uvx --from git+https://github.com/bigdra50/unity-cli unity-cli console --types error
 ```
 
 ## インストール
 
 ```bash
 # グローバルインストール
-uv tool install git+https://github.com/bigdra50/unity-mcp-client
+uv tool install git+https://github.com/bigdra50/unity-cli
 
 # CLIコマンド
 unity-cli state
