@@ -151,6 +151,58 @@ unity-cli gameobject modify --name "MyCube" --position 5,0,0 --rotation 0,45,0
 unity-cli gameobject delete --name "MyCube"
 ```
 
+### コンポーネント操作
+
+```bash
+# コンポーネント一覧
+unity-cli component list -t "Main Camera"
+
+# コンポーネント詳細
+unity-cli component inspect -t "Main Camera" -T Camera
+
+# コンポーネント追加
+unity-cli component add -t "Player" -T Rigidbody
+
+# コンポーネント削除
+unity-cli component remove -t "Player" -T Rigidbody
+```
+
+### メニュー/ContextMenu
+
+```bash
+# メニュー実行
+unity-cli menu exec "Edit/Play"
+unity-cli menu exec "Assets/Refresh"
+unity-cli menu exec "Window/General/Console"
+
+# メニュー一覧
+unity-cli menu list                    # 全メニュー
+unity-cli menu list -f "Assets"        # フィルタリング
+unity-cli menu list -f "Play" -l 20    # 件数制限
+
+# ContextMenu実行（シーン内オブジェクト）
+unity-cli menu context "Reset" -t "/Player"
+
+# ContextMenu実行（ScriptableObject）
+unity-cli menu context "DoSomething" -t "Assets/Data/Config.asset"
+
+# ContextMenu実行（Prefab）
+unity-cli menu context "Initialize" -t "Assets/Prefabs/Enemy.prefab"
+```
+
+### アセット操作
+
+```bash
+# Prefab作成
+unity-cli asset prefab -s "Player" -p "Assets/Prefabs/Player.prefab"
+
+# ScriptableObject作成
+unity-cli asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
+
+# アセット情報
+unity-cli asset info "Assets/Data/Config.asset"
+```
+
 ### マテリアル操作
 
 ```bash
@@ -186,6 +238,22 @@ for page in client.scene.iterate_hierarchy(page_size=100):
 result = client.tests.run("edit", filter_options=TestFilterOptions(
     category_names=["Unit"]
 ))
+
+# メニュー実行
+client.menu.execute("Edit/Play")
+client.menu.list(filter_text="Assets", limit=50)
+
+# ContextMenu実行
+client.menu.context("DoSomething", target="/Player")
+client.menu.context("LogInfo", target="Assets/Data/Config.asset")
+
+# コンポーネント操作
+client.component.add("Rigidbody", target="Player")
+client.component.remove("Rigidbody", target="Player")
+
+# アセット作成
+client.asset.create_prefab("Assets/Prefabs/Player.prefab", source="Player")
+client.asset.create_scriptable_object("GameConfig", "Assets/Data/Config.asset")
 ```
 
 ## オプション

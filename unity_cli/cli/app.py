@@ -653,6 +653,213 @@ def component_inspect(
         raise typer.Exit(1) from None
 
 
+@component_app.command("add")
+def component_add(
+    ctx: typer.Context,
+    component_type: Annotated[str, typer.Option("--type", "-T", help="Component type name to add")],
+    target: Annotated[str | None, typer.Option("--target", "-t", help="Target GameObject name")] = None,
+    target_id: Annotated[int | None, typer.Option("--target-id", help="Target GameObject ID")] = None,
+) -> None:
+    """Add a component to a GameObject."""
+    context: CLIContext = ctx.obj
+
+    if not target and target_id is None:
+        print_error("--target or --target-id required")
+        raise typer.Exit(1) from None
+
+    try:
+        result = context.client.component.add(
+            target=target,
+            target_id=target_id,
+            component_type=component_type,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", "Component added"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@component_app.command("remove")
+def component_remove(
+    ctx: typer.Context,
+    component_type: Annotated[str, typer.Option("--type", "-T", help="Component type name to remove")],
+    target: Annotated[str | None, typer.Option("--target", "-t", help="Target GameObject name")] = None,
+    target_id: Annotated[int | None, typer.Option("--target-id", help="Target GameObject ID")] = None,
+) -> None:
+    """Remove a component from a GameObject."""
+    context: CLIContext = ctx.obj
+
+    if not target and target_id is None:
+        print_error("--target or --target-id required")
+        raise typer.Exit(1) from None
+
+    try:
+        result = context.client.component.remove(
+            target=target,
+            target_id=target_id,
+            component_type=component_type,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", "Component removed"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
+# Menu Commands
+# =============================================================================
+
+menu_app = typer.Typer(help="Menu item commands")
+app.add_typer(menu_app, name="menu")
+
+
+@menu_app.command("exec")
+def menu_exec(
+    ctx: typer.Context,
+    path: Annotated[str, typer.Argument(help="Menu item path (e.g., 'Edit/Play')")],
+) -> None:
+    """Execute a Unity menu item."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.menu.execute(path)
+        if context.json_mode:
+            print_json(result)
+        else:
+            if result.get("success"):
+                print_success(result.get("message", f"Executed: {path}"))
+            else:
+                print_error(result.get("message", f"Failed: {path}"))
+                raise typer.Exit(1) from None
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@menu_app.command("list")
+def menu_list(
+    ctx: typer.Context,
+    filter_text: Annotated[
+        str | None,
+        typer.Option("--filter", "-f", help="Filter menu items (case-insensitive)"),
+    ] = None,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", "-l", help="Maximum items to return"),
+    ] = 100,
+) -> None:
+    """List available menu items."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.menu.list(filter_text=filter_text, limit=limit)
+        if context.json_mode:
+            items = result.get("items", [])
+            print_json(items)
+        else:
+            print_json(result)
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@menu_app.command("context")
+def menu_context(
+    ctx: typer.Context,
+    method: Annotated[str, typer.Argument(help="ContextMenu method name")],
+    target: Annotated[
+        str | None,
+        typer.Option("--target", "-t", help="Target object path (hierarchy or asset)"),
+    ] = None,
+) -> None:
+    """Execute a ContextMenu method on target object."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.menu.context(method=method, target=target)
+        print_json(result, None)
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
+# Asset Commands
+# =============================================================================
+
+asset_app = typer.Typer(help="Asset commands (Prefab, ScriptableObject)")
+app.add_typer(asset_app, name="asset")
+
+
+@asset_app.command("prefab")
+def asset_prefab(
+    ctx: typer.Context,
+    path: Annotated[str, typer.Option("--path", "-p", help="Output path (e.g., Assets/Prefabs/My.prefab)")],
+    source: Annotated[str | None, typer.Option("--source", "-s", help="Source GameObject name")] = None,
+    source_id: Annotated[int | None, typer.Option("--source-id", help="Source GameObject instance ID")] = None,
+) -> None:
+    """Create a Prefab from a GameObject."""
+    context: CLIContext = ctx.obj
+
+    if not source and source_id is None:
+        print_error("--source or --source-id required")
+        raise typer.Exit(1) from None
+
+    try:
+        result = context.client.asset.create_prefab(
+            path=path,
+            source=source,
+            source_id=source_id,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", f"Prefab created: {path}"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@asset_app.command("scriptable-object")
+def asset_scriptable_object(
+    ctx: typer.Context,
+    type_name: Annotated[str, typer.Option("--type", "-T", help="ScriptableObject type name")],
+    path: Annotated[str, typer.Option("--path", "-p", help="Output path (e.g., Assets/Data/My.asset)")],
+) -> None:
+    """Create a ScriptableObject asset."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.asset.create_scriptable_object(
+            type_name=type_name,
+            path=path,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", f"ScriptableObject created: {path}"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@asset_app.command("info")
+def asset_info(
+    ctx: typer.Context,
+    path: Annotated[str, typer.Argument(help="Asset path")],
+) -> None:
+    """Get asset information."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.asset.info(path=path)
+        print_json(result, None)
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
 # =============================================================================
 # Config Commands
 # =============================================================================

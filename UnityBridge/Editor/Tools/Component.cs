@@ -34,9 +34,11 @@ namespace UnityBridge.Tools
             {
                 "list" => ListComponents(parameters),
                 "inspect" => InspectComponent(parameters),
+                "add" => AddComponent(parameters),
+                "remove" => RemoveComponent(parameters),
                 _ => throw new ProtocolException(
                     ErrorCode.InvalidParams,
-                    $"Unknown action: {action}")
+                    $"Unknown action: {action}. Valid: list, inspect, add, remove")
             };
         }
 
@@ -139,6 +141,141 @@ namespace UnityBridge.Tools
                 ["typeName"] = component.GetType().FullName,
                 ["instanceID"] = component.GetInstanceID(),
                 ["properties"] = properties
+            };
+        }
+
+        /// <summary>
+        /// Adds a component to the specified GameObject.
+        /// </summary>
+        private static JObject AddComponent(JObject parameters)
+        {
+            var target = parameters["target"]?.Value<string>();
+            var targetId = parameters["targetId"]?.Value<int>();
+            var typeName = parameters["type"]?.Value<string>();
+
+            if (string.IsNullOrEmpty(target) && targetId == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "Either 'target' (name) or 'targetId' (instanceID) is required");
+            }
+
+            if (string.IsNullOrEmpty(typeName))
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "'type' parameter is required");
+            }
+
+            var gameObject = FindGameObject(target, targetId);
+            if (gameObject == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"GameObject not found: {target ?? targetId?.ToString()}");
+            }
+
+            var componentType = FindType(typeName);
+            if (componentType == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Component type not found: {typeName}");
+            }
+
+            if (!typeof(UnityEngine.Component).IsAssignableFrom(componentType))
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Type '{typeName}' is not a Component");
+            }
+
+            var component = Undo.AddComponent(gameObject, componentType);
+            if (component == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InternalError,
+                    $"Failed to add component '{typeName}' to '{gameObject.name}'");
+            }
+
+            EditorUtility.SetDirty(gameObject);
+
+            return new JObject
+            {
+                ["message"] = $"Added {componentType.Name} to {gameObject.name}",
+                ["gameObject"] = gameObject.name,
+                ["gameObjectId"] = gameObject.GetInstanceID(),
+                ["component"] = new JObject
+                {
+                    ["typeName"] = componentType.FullName,
+                    ["instanceID"] = component.GetInstanceID()
+                }
+            };
+        }
+
+        /// <summary>
+        /// Removes a component from the specified GameObject.
+        /// </summary>
+        private static JObject RemoveComponent(JObject parameters)
+        {
+            var target = parameters["target"]?.Value<string>();
+            var targetId = parameters["targetId"]?.Value<int>();
+            var typeName = parameters["type"]?.Value<string>();
+
+            if (string.IsNullOrEmpty(target) && targetId == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "Either 'target' (name) or 'targetId' (instanceID) is required");
+            }
+
+            if (string.IsNullOrEmpty(typeName))
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "'type' parameter is required");
+            }
+
+            var gameObject = FindGameObject(target, targetId);
+            if (gameObject == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"GameObject not found: {target ?? targetId?.ToString()}");
+            }
+
+            var componentType = FindType(typeName);
+            if (componentType == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Component type not found: {typeName}");
+            }
+
+            var component = gameObject.GetComponent(componentType);
+            if (component == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Component '{typeName}' not found on '{gameObject.name}'");
+            }
+
+            // Prevent removing Transform
+            if (componentType == typeof(Transform))
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "Cannot remove Transform component");
+            }
+
+            Undo.DestroyObjectImmediate(component);
+            EditorUtility.SetDirty(gameObject);
+
+            return new JObject
+            {
+                ["message"] = $"Removed {componentType.Name} from {gameObject.name}",
+                ["gameObject"] = gameObject.name,
+                ["gameObjectId"] = gameObject.GetInstanceID()
             };
         }
 

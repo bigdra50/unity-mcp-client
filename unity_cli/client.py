@@ -36,6 +36,7 @@ from unity_cli.exceptions import (
 
 if TYPE_CHECKING:
     from unity_cli.api import (
+        AssetAPI,
         ComponentAPI,
         ConsoleAPI,
         EditorAPI,
@@ -573,6 +574,7 @@ class UnityClient:
 
         # Lazy import to avoid circular dependencies
         from unity_cli.api import (
+            AssetAPI,
             ComponentAPI,
             ConsoleAPI,
             EditorAPI,
@@ -584,6 +586,7 @@ class UnityClient:
         )
 
         # API objects
+        self.asset: AssetAPI = AssetAPI(self._conn)
         self.console: ConsoleAPI = ConsoleAPI(self._conn)
         self.editor: EditorAPI = EditorAPI(self._conn)
         self.gameobject: GameObjectAPI = GameObjectAPI(self._conn)
