@@ -26,7 +26,7 @@ u instances                               # List connected instances
 
 # Editor Selection & Screenshot
 u selection                               # Get current editor selection
-u screenshot --view game --path ./out.png
+u screenshot -s game -p ./out.png
 
 # Console commands (adb logcat style levels)
 u console get                             # All logs
@@ -52,7 +52,7 @@ u tests status                            # Check test status
 # GameObject commands
 u gameobject find <name>                  # Find GameObjects
 u gameobject create <name>                # Create GameObject
-u gameobject modify <name> --pos 0,1,0    # Modify transform
+u gameobject modify -n <name> --position 0 1 0  # Modify transform
 u gameobject delete <name>                # Delete GameObject
 
 # Component commands
@@ -62,7 +62,7 @@ u component add <gameobject> <type>       # Add component
 u component remove <gameobject> <type>    # Remove component
 
 # Menu commands
-u menu execute "Window/General/Console"   # Execute menu item
+u menu exec "Window/General/Console"      # Execute menu item
 
 # Asset commands
 u asset prefab <gameobject> <path>        # Create prefab
