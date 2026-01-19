@@ -1,6 +1,6 @@
 [project]
 name = "unity-cli"
-version = "3.2.0"
+version = "3.2.1"
 description = "Python client for Unity Bridge Relay Server - control Unity Editor via TCP protocol"
 readme = "README.md"
 license = { text = "MIT" }

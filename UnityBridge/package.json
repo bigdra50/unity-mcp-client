@@ -1,6 +1,6 @@
 {
   "name": "com.bigdra50.unity-bridge",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "displayName": "Unity Bridge",
   "description": "Bridge client enabling CLI and automation tools to control Unity Editor via TCP",
   "unity": "2021.3",
