@@ -323,6 +323,18 @@ u asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
 u asset info "Assets/Data/Config.asset"
 ```
 
+### 設定
+
+```bash
+# 現在の設定を表示
+u config show
+
+# デフォルト .unity-cli.toml を生成
+u config init
+u config init -o ./custom-config.toml
+u config init --force                  # 既存を上書き
+```
+
 ## オプション
 
 ### 共通オプション

@@ -323,6 +323,18 @@ u asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
 u asset info "Assets/Data/Config.asset"
 ```
 
+### Configuration
+
+```bash
+# Show current configuration
+u config show
+
+# Generate default .unity-cli.toml
+u config init
+u config init -o ./custom-config.toml
+u config init --force                  # Overwrite existing
+```
+
 ## Options
 
 ### Common Options
