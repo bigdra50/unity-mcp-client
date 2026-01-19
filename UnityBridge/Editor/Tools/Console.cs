@@ -133,7 +133,7 @@ namespace UnityBridge.Tools
                 startGettingEntriesMethod.Invoke(null, null);
 
                 var totalCount = (int)getCountMethod.Invoke(null, null);
-                BridgeLog.Info($"Console: Total entries={totalCount}, requested types={string.Join(",", types)}, count={count}");
+                BridgeLog.Verbose($"Console: Total entries={totalCount}, requested types={string.Join(",", types)}, count={count}");
 
                 var logEntry = Activator.CreateInstance(logEntryType);
 
@@ -175,47 +175,59 @@ namespace UnityBridge.Tools
 
         private static string GetEntryType(int mode, string message)
         {
-            // Unity's mode field contains multiple flags. The lower bits vary by Unity version.
-            // Observed: 0x804400 for Debug.Log
+            // Unity 6000.x observed mode values:
+            //   Debug.Log:       0x00804400
+            //   Debug.LogWarning: 0x00804200
+            //   Compiler Warning: 0x00041000
+            //   Error/Exception: typically has bit 0 (kModeLog) not set
             //
-            // Common bit patterns (may vary by Unity version):
-            // Error/Exception bits tend to be in lower positions
-            // Warning bits in middle positions
-            // Log bits can be in various positions
-            //
-            // Unity 6000.x observed values:
-            //   Log:     0x804400 (bit 10, 14, 23 set)
-            //   Warning: TBD
-            //   Error:   TBD
+            // The lower 8 bits often appear to be 0x00, so we cannot rely on LogType mask.
+            // Instead, use bit pattern analysis and message content.
 
-            // Use message content inference as primary method (most reliable across Unity versions)
+            // 1. First check message content (most reliable)
             if (message != null)
             {
-                // Check for error indicators in the message
-                if (message.StartsWith("[Error]") ||
-                    message.Contains("Exception") ||
+                // Check for error indicators
+                if (message.Contains("error CS") ||        // Compiler error
+                    message.Contains("Exception:") ||       // Exception with colon
                     message.Contains("NullReferenceException") ||
-                    message.Contains("error CS") ||  // Compiler error
-                    message.Contains("Error:"))
+                    message.Contains("IndexOutOfRangeException") ||
+                    message.Contains("ArgumentException") ||
+                    message.StartsWith("[Error]") ||
+                    (message.Contains("Error") && !message.Contains("[UnityBridge]")))  // Exclude our own logs
                     return "error";
 
                 // Check for warning indicators
-                if (message.StartsWith("[Warning]") ||
-                    message.Contains("warning CS") ||  // Compiler warning
-                    message.Contains("Warning:"))
+                if (message.Contains("warning CS") ||      // Compiler warning
+                    message.StartsWith("[Warning]") ||
+                    message.StartsWith("Warning:"))
                     return "warning";
             }
 
-            // Fallback: check known mode bit patterns
-            // These values are from Unity's internal ConsoleWindow
-            const int kModeError = 1 << 0;      // 1
-            const int kModeAssert = 1 << 1;     // 2
-            const int kModeException = 1 << 8;  // 256
+            // 2. Check known mode bit patterns for Unity 6000.x
+            // Compiler warning: 0x00041000 (bits 12, 16 set)
+            // Debug.LogWarning: 0x00804200 (bit 9 set instead of bit 10)
+            // Debug.Log:        0x00804400 (bit 10 set)
+            // Note: bits 9 vs 10 distinguish Warning vs Log in Unity's internal encoding
 
-            if ((mode & kModeError) != 0 || (mode & kModeException) != 0 || (mode & kModeAssert) != 0)
-                return "error";
+            const int kBit9 = 1 << 9;   // 0x200 - Warning indicator
+            const int kBit10 = 1 << 10; // 0x400 - Log indicator
+            const int kBit12 = 1 << 12; // 0x1000 - Compiler message
+            const int kBit16 = 1 << 16; // 0x10000 - Warning class
 
-            // Default to log (most common case)
+            // Compiler warnings: bits 12 and 16 set (0x00041000)
+            if ((mode & kBit12) != 0 && (mode & kBit16) != 0)
+                return "warning";
+
+            // Debug.LogWarning: bit 9 set but not bit 10
+            if ((mode & kBit9) != 0 && (mode & kBit10) == 0)
+                return "warning";
+
+            // Debug.Log: bit 10 set (0x00804400)
+            if ((mode & kBit10) != 0)
+                return "log";
+
+            // Default: treat as log
             return "log";
         }
 
