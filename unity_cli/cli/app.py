@@ -252,15 +252,64 @@ console_app = typer.Typer(help="Console log commands")
 app.add_typer(console_app, name="console")
 
 
+def _parse_level(level: str) -> list[str]:
+    """Parse level option like adb logcat style.
+
+    Levels (ascending severity): L (log) < W (warning) < E (error) < X (exception)
+    Assert (A) is treated as same level as error.
+
+    Examples:
+        "E"   -> ["error", "exception"] (error and above)
+        "W"   -> ["warning", "error", "assert", "exception"] (warning and above)
+        "+W"  -> ["warning"] (warning only)
+        "+E+X" -> ["error", "exception"] (specific types only)
+    """
+    level = level.upper().strip()
+
+    # Hierarchy mapping (level -> types at that level and above)
+    hierarchy = {
+        "L": ["log", "warning", "error", "assert", "exception"],
+        "W": ["warning", "error", "assert", "exception"],
+        "E": ["error", "assert", "exception"],
+        "A": ["error", "assert", "exception"],  # Assert same as Error level
+        "X": ["exception"],
+    }
+
+    # Type mapping for specific selection
+    type_map = {
+        "L": "log",
+        "W": "warning",
+        "E": "error",
+        "A": "assert",
+        "X": "exception",
+    }
+
+    # Specific types mode: +E+W or +E
+    if level.startswith("+"):
+        types = []
+        for char in level.replace("+", " ").split():
+            if char in type_map:
+                types.append(type_map[char])
+        return types if types else ["log", "warning", "error", "assert", "exception"]
+
+    # Hierarchy mode: E -> error and above
+    if level in hierarchy:
+        return hierarchy[level]
+
+    # Invalid level, return all
+    return ["log", "warning", "error", "assert", "exception"]
+
+
 @console_app.command("get")
 def console_get(
     ctx: typer.Context,
-    types: Annotated[
-        list[str] | None,
+    level: Annotated[
+        str | None,
         typer.Option(
-            "--types",
-            "-t",
-            help="Log types to filter (log, warning, error, assert, exception)",
+            "--level",
+            "-l",
+            help="Log level filter: L(log), W(warning), E(error), X(exception). "
+            "E.g., '-l W' for warning+, '-l +E' for error only",
         ),
     ] = None,
     count: Annotated[
@@ -272,10 +321,21 @@ def console_get(
         typer.Option("--filter", "-f", help="Text to filter logs"),
     ] = None,
 ) -> None:
-    """Get console logs."""
+    """Get console logs.
+
+    Level hierarchy: L (log) < W (warning) < E (error) < X (exception)
+
+    Examples:
+        u console get              # All logs
+        u console get -l E         # Error and above (error + exception)
+        u console get -l W         # Warning and above
+        u console get -l +W        # Warning only
+        u console get -l +E+X      # Error and exception only
+    """
     context: CLIContext = ctx.obj
     try:
-        # types未指定時はNoneのままUnityに送信（Unity側で全タイプ対象）
+        # Parse level option to types list
+        types = _parse_level(level) if level else None
         result = context.client.console.get(
             types=types,
             count=count,

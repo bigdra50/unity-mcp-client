@@ -18,8 +18,8 @@ Execute Unity Editor operations from CLI: Play Mode control, console log retriev
 u play
 u stop
 
-# Get console logs (error only)
-u console get --types error
+# Get console logs (error and above)
+u console get -l E
 
 # Execute menu items
 u menu exec "Assets/Refresh"
@@ -70,8 +70,8 @@ uvx --from git+https://github.com/bigdra50/unity-cli u state
 uvx --from git+https://github.com/bigdra50/unity-cli u play
 uvx --from git+https://github.com/bigdra50/unity-cli u stop
 
-# Get console logs
-uvx --from git+https://github.com/bigdra50/unity-cli u console get --types error
+# Get console logs (error and above)
+uvx --from git+https://github.com/bigdra50/unity-cli u console get -l E
 ```
 
 ## Installation
@@ -89,7 +89,7 @@ unity state        # Short alias
 u state            # Shortest alias
 
 u play
-u console get --types error --count 10
+u console get -l E -c 10       # Last 10 error+ logs
 
 # Run Relay Server standalone
 unity-relay --port 6500
@@ -183,9 +183,13 @@ u stop
 u pause
 
 # Console logs
-u console get
-u console get --types error warning --count 20
-u console clear
+u console get                  # All logs
+u console get -l W             # Warning and above (warning, error, exception)
+u console get -l E             # Error and above (error, exception)
+u console get -l +W            # Warning only
+u console get -l +E+X          # Error and exception only
+u console get -c 20            # Last 20 entries
+u console clear                # Clear console
 
 # Asset refresh
 u refresh
@@ -399,7 +403,7 @@ lsof -i :6500
 u instances
 
 # Check Unity console for errors
-u console get --types error
+u console get -l E
 ```
 
 ## v2.x → v3.0 Migration

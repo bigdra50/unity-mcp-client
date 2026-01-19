@@ -18,8 +18,8 @@ Play Mode 制御、コンソールログ取得、テスト実行、シーン/Gam
 u play
 u stop
 
-# コンソールログ取得（エラーのみ）
-u console get --types error
+# コンソールログ取得（エラー以上）
+u console get -l E
 
 # メニュー実行
 u menu exec "Assets/Refresh"
@@ -70,8 +70,8 @@ uvx --from git+https://github.com/bigdra50/unity-cli u state
 uvx --from git+https://github.com/bigdra50/unity-cli u play
 uvx --from git+https://github.com/bigdra50/unity-cli u stop
 
-# コンソールログ取得
-uvx --from git+https://github.com/bigdra50/unity-cli u console get --types error
+# コンソールログ取得（エラー以上）
+uvx --from git+https://github.com/bigdra50/unity-cli u console get -l E
 ```
 
 ## インストール
@@ -89,7 +89,7 @@ unity state        # 短縮形
 u state            # 最短形
 
 u play
-u console get --types error --count 10
+u console get -l E -c 10       # 最新10件のエラー以上
 
 # Relay Server 単体起動
 unity-relay --port 6500
@@ -183,9 +183,13 @@ u stop
 u pause
 
 # コンソールログ
-u console get
-u console get --types error warning --count 20
-u console clear
+u console get                  # 全件
+u console get -l W             # warning以上（warning, error, exception）
+u console get -l E             # error以上（error, exception）
+u console get -l +W            # warningのみ
+u console get -l +E+X          # errorとexceptionのみ
+u console get -c 20            # 最新20件
+u console clear                # コンソールクリア
 
 # アセットリフレッシュ
 u refresh
@@ -399,7 +403,7 @@ lsof -i :6500
 u instances
 
 # Unityコンソールでエラー確認
-u console get --types error
+u console get -l E
 ```
 
 ## v2.x → v3.0 マイグレーション
