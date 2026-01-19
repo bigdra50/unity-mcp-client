@@ -9,6 +9,7 @@ and sub-command groups for scene, tests, gameobject, component, etc.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Annotated
 
@@ -153,6 +154,16 @@ def main(
 # =============================================================================
 # Basic Commands
 # =============================================================================
+
+
+@app.command()
+def version() -> None:
+    """Show CLI version."""
+    try:
+        ver = pkg_version("unity-cli")
+    except Exception:
+        ver = "unknown"
+    console.print(f"unity-cli {ver}")
 
 
 @app.command()
