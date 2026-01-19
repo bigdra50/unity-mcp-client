@@ -33,7 +33,7 @@ namespace UnityBridge.Tools
         private static JObject HandleRead(JObject parameters)
         {
             var types = parameters["types"]?.ToObject<string[]>() ?? new[] { "log", "warning", "error" };
-            var count = parameters["count"]?.Value<int>() ?? 100;
+            var count = parameters["count"]?.Value<int?>() ?? int.MaxValue;  // 0 or unspecified = all
             var search = parameters["search"]?.Value<string>();
 
             var entries = GetConsoleEntries(types, count, search);
@@ -137,10 +137,8 @@ namespace UnityBridge.Tools
 
                 var logEntry = Activator.CreateInstance(logEntryType);
 
-                // Read from the end (most recent first)
-                var startIndex = Math.Max(0, totalCount - count);
-
-                for (var i = totalCount - 1; i >= startIndex && entries.Count < count; i--)
+                // Read from the end (most recent first) until we have enough filtered entries
+                for (var i = totalCount - 1; i >= 0 && entries.Count < count; i--)
                 {
                     getEntryInternalMethod.Invoke(null, new[] { i, logEntry });
 

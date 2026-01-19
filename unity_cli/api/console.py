@@ -17,7 +17,7 @@ class ConsoleAPI:
     def get(
         self,
         types: list[str] | None = None,
-        count: int = 100,
+        count: int | None = None,
         format: str = "detailed",
         include_stacktrace: bool = True,
         filter_text: str | None = None,
@@ -26,7 +26,7 @@ class ConsoleAPI:
 
         Args:
             types: Log types to retrieve (e.g., ["error", "warning"])
-            count: Maximum number of logs to retrieve
+            count: Maximum number of logs to retrieve (None = all)
             format: Output format ("detailed" or "simple")
             include_stacktrace: Include stack traces in output
             filter_text: Text to filter logs by
@@ -41,7 +41,7 @@ class ConsoleAPI:
         }
         if types:
             params["types"] = types
-        if count:
+        if count is not None:
             params["count"] = count
         if filter_text:
             params["search"] = filter_text

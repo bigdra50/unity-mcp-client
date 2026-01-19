@@ -264,9 +264,9 @@ def console_get(
         ),
     ] = None,
     count: Annotated[
-        int,
-        typer.Option("--count", "-c", help="Number of logs to retrieve"),
-    ] = 20,
+        int | None,
+        typer.Option("--count", "-c", help="Number of logs to retrieve (default: all)"),
+    ] = None,
     filter_text: Annotated[
         str | None,
         typer.Option("--filter", "-f", help="Text to filter logs"),
