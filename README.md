@@ -242,7 +242,6 @@ u scene hierarchy --page-size 100    # Custom page size
 # Scene operations
 u scene load --name MainScene
 u scene save
-u scene create --name NewScene --path Assets/Scenes
 ```
 
 ### GameObject Operations

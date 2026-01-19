@@ -242,7 +242,6 @@ u scene hierarchy --page-size 100    # ページサイズ指定
 # シーン操作
 u scene load --name MainScene
 u scene save
-u scene create --name NewScene --path Assets/Scenes
 ```
 
 ### GameObject操作
