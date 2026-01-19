@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.bigdra50.unity-bridge": {
-      "version": "file:/Volumes/CrucialX9/dev/github.com/bigdra50/unity-cli/UnityBridge",
+      "version": "file:../../UnityBridge",
       "depth": 0,
       "source": "local",
       "dependencies": {

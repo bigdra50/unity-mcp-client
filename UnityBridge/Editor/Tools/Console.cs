@@ -64,16 +64,20 @@ namespace UnityBridge.Tools
             var logEntriesType = Type.GetType("UnityEditor.LogEntries, UnityEditor");
             if (logEntriesType == null)
             {
-                BridgeLog.Warn("Could not find LogEntries type");
+                BridgeLog.Error("Could not find LogEntries type");
                 return entries;
             }
+
+            BridgeLog.Verbose($"LogEntries type found: {logEntriesType.FullName}");
 
             var logEntryType = Type.GetType("UnityEditor.LogEntry, UnityEditor");
             if (logEntryType == null)
             {
-                BridgeLog.Warn("Could not find LogEntry type");
+                BridgeLog.Error("Could not find LogEntry type");
                 return entries;
             }
+
+            BridgeLog.Verbose($"LogEntry type found: {logEntryType.FullName}");
 
             // Get methods - include NonPublic binding flag
             var bindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
@@ -86,9 +90,16 @@ namespace UnityBridge.Tools
             if (getCountMethod == null || startGettingEntriesMethod == null ||
                 getEntryInternalMethod == null || endGettingEntriesMethod == null)
             {
-                BridgeLog.Warn("Could not find required LogEntries methods");
+                BridgeLog.Error($"Could not find required LogEntries methods: GetCount={getCountMethod != null}, StartGettingEntries={startGettingEntriesMethod != null}, GetEntryInternal={getEntryInternalMethod != null}, EndGettingEntries={endGettingEntriesMethod != null}");
+                // List all methods for debugging
+                foreach (var method in logEntriesType.GetMethods(bindingFlags))
+                {
+                    BridgeLog.Verbose($"LogEntries method: {method.Name}");
+                }
                 return entries;
             }
+
+            BridgeLog.Verbose("All LogEntries methods found");
 
             // Get LogEntry fields - include NonPublic binding flag
             var instanceBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -103,14 +114,16 @@ namespace UnityBridge.Tools
 
             if (messageField == null || modeField == null)
             {
-                BridgeLog.Warn("Could not find required LogEntry fields");
-                // List all fields for debugging (verbose only)
+                BridgeLog.Error($"Could not find required LogEntry fields: message={messageField != null}, mode={modeField != null}");
+                // List all fields for debugging
                 foreach (var field in logEntryType.GetFields(instanceBindingFlags))
                 {
-                    BridgeLog.Verbose($"LogEntry field: {field.Name} ({field.FieldType})");
+                    BridgeLog.Error($"LogEntry field: {field.Name} ({field.FieldType})");
                 }
                 return entries;
             }
+
+            BridgeLog.Verbose($"LogEntry fields found: message={messageField.Name}, mode={modeField.Name}");
 
             // Convert type filters
             var typeSet = new HashSet<string>(types, StringComparer.OrdinalIgnoreCase);
@@ -120,6 +133,8 @@ namespace UnityBridge.Tools
                 startGettingEntriesMethod.Invoke(null, null);
 
                 var totalCount = (int)getCountMethod.Invoke(null, null);
+                BridgeLog.Info($"Console: Total entries={totalCount}, requested types={string.Join(",", types)}, count={count}");
+
                 var logEntry = Activator.CreateInstance(logEntryType);
 
                 // Read from the end (most recent first)
