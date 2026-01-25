@@ -19,7 +19,7 @@ class ConsoleAPI:
         types: list[str] | None = None,
         count: int | None = None,
         format: str = "detailed",
-        include_stacktrace: bool = True,
+        include_stacktrace: bool = False,
         filter_text: str | None = None,
     ) -> dict[str, Any]:
         """Get console logs.
@@ -28,7 +28,7 @@ class ConsoleAPI:
             types: Log types to retrieve (e.g., ["error", "warning"])
             count: Maximum number of logs to retrieve (None = all)
             format: Output format ("detailed" or "simple")
-            include_stacktrace: Include stack traces in output
+            include_stacktrace: Include stack traces in output (default: False)
             filter_text: Text to filter logs by
 
         Returns:

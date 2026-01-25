@@ -331,13 +331,18 @@ def console_get(
         str | None,
         typer.Option("--filter", "-f", help="Text to filter logs"),
     ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Include stack traces in output"),
+    ] = False,
 ) -> None:
     """Get console logs.
 
     Level hierarchy: L (log) < W (warning) < E (error) < X (exception)
 
     Examples:
-        u console get              # All logs
+        u console get              # All logs (no stack traces)
+        u console get -v           # All logs with stack traces
         u console get -l E         # Error and above (error + exception)
         u console get -l W         # Warning and above
         u console get -l +W        # Warning only
@@ -351,6 +356,7 @@ def console_get(
             types=types,
             count=count,
             filter_text=filter_text,
+            include_stacktrace=verbose,
         )
         print_json(result, None)
     except UnityCLIError as e:

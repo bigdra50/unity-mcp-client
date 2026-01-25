@@ -36,8 +36,9 @@ namespace UnityBridge.Tools
             var types = parameters["types"]?.ToObject<string[]>();
             var count = parameters["count"]?.Value<int?>() ?? int.MaxValue;  // unspecified = all
             var search = parameters["search"]?.Value<string>();
+            var includeStackTrace = parameters["include_stacktrace"]?.Value<bool>() ?? false;
 
-            var entries = GetConsoleEntries(types, count, search);
+            var entries = GetConsoleEntries(types, count, search, includeStackTrace);
 
             return new JObject
             {
@@ -57,7 +58,7 @@ namespace UnityBridge.Tools
             };
         }
 
-        private static List<object> GetConsoleEntries(string[] types, int count, string search)
+        private static List<object> GetConsoleEntries(string[] types, int count, string search, bool includeStackTrace)
         {
             var entries = new List<object>();
 
@@ -146,7 +147,7 @@ namespace UnityBridge.Tools
                 {
                     getEntryInternalMethod.Invoke(null, new[] { i, logEntry });
 
-                    var message = (string)messageField.GetValue(logEntry);
+                    var rawMessage = (string)messageField.GetValue(logEntry);
                     var mode = (int)modeField.GetValue(logEntry);
                     var entryType = GetEntryType(mode);
 
@@ -154,17 +155,33 @@ namespace UnityBridge.Tools
                     if (typeSet != null && !typeSet.Contains(entryType))
                         continue;
 
-                    // Filter by search
+                    // Filter by search (check full message including stack trace)
                     if (!string.IsNullOrEmpty(search) &&
-                        !message.Contains(search, StringComparison.OrdinalIgnoreCase))
+                        !rawMessage.Contains(search, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    entries.Add(new
+                    // Split message and stack trace at first newline
+                    var (message, stackTrace) = SplitMessageAndStackTrace(rawMessage);
+
+                    if (includeStackTrace && !string.IsNullOrEmpty(stackTrace))
                     {
-                        message = message,
-                        type = entryType,
-                        timestamp = DateTime.Now.ToString("HH:mm:ss") // LogEntry doesn't have timestamp
-                    });
+                        entries.Add(new
+                        {
+                            message = message,
+                            type = entryType,
+                            stackTrace = stackTrace,
+                            timestamp = DateTime.Now.ToString("HH:mm:ss")
+                        });
+                    }
+                    else
+                    {
+                        entries.Add(new
+                        {
+                            message = message,
+                            type = entryType,
+                            timestamp = DateTime.Now.ToString("HH:mm:ss")
+                        });
+                    }
                 }
             }
             finally
@@ -173,6 +190,24 @@ namespace UnityBridge.Tools
             }
 
             return entries;
+        }
+
+        /// <summary>
+        /// Split raw log message into message body and stack trace.
+        /// Unity combines message and stack trace with newline in the message field.
+        /// </summary>
+        private static (string message, string stackTrace) SplitMessageAndStackTrace(string rawMessage)
+        {
+            if (string.IsNullOrEmpty(rawMessage))
+                return (string.Empty, string.Empty);
+
+            var newlineIndex = rawMessage.IndexOf('\n');
+            if (newlineIndex < 0)
+                return (rawMessage.TrimEnd(), string.Empty);
+
+            var message = rawMessage.Substring(0, newlineIndex).TrimEnd();
+            var stackTrace = rawMessage.Substring(newlineIndex + 1).Trim();
+            return (message, stackTrace);
         }
 
         /// <summary>
