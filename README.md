@@ -182,7 +182,8 @@ u stop
 u pause
 
 # Console logs
-u console get                  # All logs
+u console get                  # All logs (no stack traces)
+u console get -v               # All logs with stack traces
 u console get -l W             # Warning and above (warning, error, exception)
 u console get -l E             # Error and above (error, exception)
 u console get -l +W            # Warning only

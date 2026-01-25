@@ -29,7 +29,8 @@ u selection                               # Get current editor selection
 u screenshot -s game -p ./out.png
 
 # Console commands (adb logcat style levels)
-u console get                             # All logs
+u console get                             # All logs (no stack traces)
+u console get -v                          # All logs with stack traces
 u console get -l W                        # Warning and above
 u console get -l E                        # Error and above
 u console get -l +W                       # Warning only
