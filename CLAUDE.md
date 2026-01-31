@@ -55,12 +55,15 @@ u tests status                            # Check test status
 u gameobject find <name>                  # Find GameObjects
 u gameobject create <name>                # Create GameObject
 u gameobject modify -n <name> --position 0 1 0  # Modify transform
+u gameobject active -n <name> --active    # Activate GameObject
+u gameobject active -n <name> --no-active # Deactivate GameObject
 u gameobject delete <name>                # Delete GameObject
 
 # Component commands
 u component list <gameobject>             # List components
 u component inspect <gameobject> <type>   # Inspect properties
 u component add <gameobject> <type>       # Add component
+u component modify -t <go> -T <type> --prop <name> --value <val>  # Modify property
 u component remove <gameobject> <type>    # Remove component
 
 # Menu commands
