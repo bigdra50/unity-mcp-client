@@ -1138,6 +1138,82 @@ def asset_refs(
 
 
 # =============================================================================
+# Package Commands (via Relay)
+# =============================================================================
+
+package_app = typer.Typer(help="Package Manager commands (via Relay)")
+app.add_typer(package_app, name="package")
+
+
+@package_app.command("list")
+def package_list(
+    ctx: typer.Context,
+) -> None:
+    """List installed packages."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.package.list()
+        if context.json_mode:
+            print_json(result)
+        else:
+            from rich.table import Table
+
+            packages = result.get("packages", [])
+            table = Table(title=f"Packages ({len(packages)})")
+            table.add_column("Name", style="cyan")
+            table.add_column("Version")
+            table.add_column("Display Name")
+            table.add_column("Source")
+            for pkg in packages:
+                table.add_row(
+                    pkg.get("name", ""),
+                    pkg.get("version", ""),
+                    pkg.get("displayName", ""),
+                    pkg.get("source", ""),
+                )
+            console.print(table)
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@package_app.command("add")
+def package_add(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="Package ID (e.g., com.unity.textmeshpro@3.0.6)")],
+) -> None:
+    """Add a package."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.package.add(name)
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", f"Package added: {name}"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@package_app.command("remove")
+def package_remove(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="Package name (e.g., com.unity.textmeshpro)")],
+) -> None:
+    """Remove a package."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.package.remove(name)
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", f"Package removed: {name}"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
 # UI Tree Commands
 # =============================================================================
 

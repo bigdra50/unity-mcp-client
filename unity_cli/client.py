@@ -43,6 +43,7 @@ if TYPE_CHECKING:
         GameObjectAPI,
         MaterialAPI,
         MenuAPI,
+        PackageAPI,
         SceneAPI,
         ScreenshotAPI,
         SelectionAPI,
@@ -587,6 +588,7 @@ class UnityClient:
             GameObjectAPI,
             MaterialAPI,
             MenuAPI,
+            PackageAPI,
             SceneAPI,
             ScreenshotAPI,
             SelectionAPI,
@@ -602,6 +604,7 @@ class UnityClient:
         self.scene: SceneAPI = SceneAPI(self._conn)
         self.component: ComponentAPI = ComponentAPI(self._conn)
         self.material: MaterialAPI = MaterialAPI(self._conn)
+        self.package: PackageAPI = PackageAPI(self._conn)
         self.tests: TestAPI = TestAPI(self._conn)
         self.menu: MenuAPI = MenuAPI(self._conn)
         self.selection: SelectionAPI = SelectionAPI(self._conn)
