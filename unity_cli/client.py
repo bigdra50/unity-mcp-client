@@ -378,6 +378,8 @@ class RelayConnection:
 
             if code == "INSTANCE_NOT_FOUND":
                 raise InstanceError(message, code)
+            if code == "AMBIGUOUS_INSTANCE":
+                raise InstanceError(message, code)
             if code == "INSTANCE_RELOADING":
                 raise InstanceError(message, code)
             if code == "INSTANCE_BUSY":

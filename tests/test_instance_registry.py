@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from relay.instance_registry import InstanceRegistry, UnityInstance
+from relay.instance_registry import AmbiguousInstanceError, InstanceRegistry, UnityInstance
 from relay.protocol import InstanceStatus
 
 
@@ -503,3 +503,135 @@ class TestInstanceRegistry:
 
         assert result is True
         assert registry._instances["/test"].status == InstanceStatus.DISCONNECTED
+
+
+class TestInstanceResolution:
+    """Test _resolve_instance() 4-stage matching logic."""
+
+    @pytest.fixture
+    def registry(self) -> InstanceRegistry:
+        reg = InstanceRegistry()
+        # Setup test instances
+        reg._instances["/Users/dev/U1XRTK"] = UnityInstance(
+            instance_id="/Users/dev/U1XRTK",
+            project_name="U1XRTK",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        reg._instances["/Users/dev/U1Platform"] = UnityInstance(
+            instance_id="/Users/dev/U1Platform",
+            project_name="U1Platform",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        reg._instances["/Users/dev/OtherProject"] = UnityInstance(
+            instance_id="/Users/dev/OtherProject",
+            project_name="OtherProject",
+            unity_version="6000.0",
+            status=InstanceStatus.READY,
+        )
+        reg._default_instance_id = "/Users/dev/U1XRTK"
+        return reg
+
+    def test_stage1_instance_id_exact_match(self, registry: InstanceRegistry) -> None:
+        result = registry.get_instance_for_request("/Users/dev/U1XRTK")
+        assert result is not None
+        assert result.instance_id == "/Users/dev/U1XRTK"
+
+    def test_stage2_project_name_exact_match(self, registry: InstanceRegistry) -> None:
+        result = registry.get_instance_for_request("U1XRTK")
+        assert result is not None
+        assert result.instance_id == "/Users/dev/U1XRTK"
+
+    def test_stage2_project_name_exact_match_other(self, registry: InstanceRegistry) -> None:
+        result = registry.get_instance_for_request("OtherProject")
+        assert result is not None
+        assert result.instance_id == "/Users/dev/OtherProject"
+
+    def test_stage3_path_suffix_match(self, registry: InstanceRegistry) -> None:
+        # project_name != query だが instance_id が /query で終わるケース
+        # 既存の U1XRTK は project_name でも一致するので、
+        # project_name を変えたインスタンスで確認
+        registry._instances["/home/user/workspace/MyApp"] = UnityInstance(
+            instance_id="/home/user/workspace/MyApp",
+            project_name="My Application",  # project_name はクエリと一致しない
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        result = registry.get_instance_for_request("MyApp")
+        assert result is not None
+        assert result.instance_id == "/home/user/workspace/MyApp"
+
+    def test_stage4_prefix_match_unique(self, registry: InstanceRegistry) -> None:
+        result = registry.get_instance_for_request("Other")
+        assert result is not None
+        assert result.instance_id == "/Users/dev/OtherProject"
+
+    def test_stage4_prefix_match_ambiguous_raises(self, registry: InstanceRegistry) -> None:
+        # "U1" は U1XRTK と U1Platform の両方にマッチ
+        with pytest.raises(AmbiguousInstanceError) as exc_info:
+            registry.get_instance_for_request("U1")
+        assert "U1" in str(exc_info.value)
+        assert len(exc_info.value.candidates) == 2
+
+    def test_no_match_returns_none(self, registry: InstanceRegistry) -> None:
+        result = registry.get_instance_for_request("NonExistent")
+        assert result is None
+
+    def test_default_instance_when_none(self, registry: InstanceRegistry) -> None:
+        result = registry.get_instance_for_request(None)
+        assert result is not None
+        assert result.instance_id == "/Users/dev/U1XRTK"
+
+    def test_default_instance_when_empty_string(self, registry: InstanceRegistry) -> None:
+        # empty string is falsy → returns default
+        result = registry.get_instance_for_request("")
+        assert result is not None
+        assert result.instance_id == "/Users/dev/U1XRTK"
+
+    def test_priority_exact_id_over_name(self, registry: InstanceRegistry) -> None:
+        # instance_id が完全一致すれば project_name 検索は行わない
+        # 別インスタンスの project_name が同じクエリ文字列のケース
+        registry._instances["/special"] = UnityInstance(
+            instance_id="/special",
+            project_name="SomeName",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        result = registry.get_instance_for_request("/special")
+        assert result is not None
+        assert result.instance_id == "/special"
+
+    def test_stage2_ambiguous_project_name_raises(self, registry: InstanceRegistry) -> None:
+        # 同じ project_name を持つ2つのインスタンス
+        registry._instances["/path/a/Dup"] = UnityInstance(
+            instance_id="/path/a/Dup",
+            project_name="DupProject",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        registry._instances["/path/b/Dup"] = UnityInstance(
+            instance_id="/path/b/Dup",
+            project_name="DupProject",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        with pytest.raises(AmbiguousInstanceError):
+            registry.get_instance_for_request("DupProject")
+
+    def test_stage3_ambiguous_suffix_raises(self, registry: InstanceRegistry) -> None:
+        # 同じ末尾パスを持つ2つのインスタンス (project_name は異なる)
+        registry._instances["/workspace/a/SharedDir"] = UnityInstance(
+            instance_id="/workspace/a/SharedDir",
+            project_name="SharedA",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        registry._instances["/workspace/b/SharedDir"] = UnityInstance(
+            instance_id="/workspace/b/SharedDir",
+            project_name="SharedB",
+            unity_version="2022.3",
+            status=InstanceStatus.READY,
+        )
+        with pytest.raises(AmbiguousInstanceError):
+            registry.get_instance_for_request("SharedDir")

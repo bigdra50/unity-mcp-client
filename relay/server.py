@@ -12,7 +12,7 @@ import logging
 import signal
 from typing import Any
 
-from .instance_registry import InstanceRegistry, QueuedCommand, UnityInstance
+from .instance_registry import AmbiguousInstanceError, InstanceRegistry, QueuedCommand, UnityInstance
 from .protocol import (
     PROTOCOL_VERSION,
     CommandMessage,
@@ -440,7 +440,14 @@ class RelayServer:
 
         while waited_ms < max_wait_ms:
             # Get target instance
-            instance = self.registry.get_instance_for_request(instance_id)
+            try:
+                instance = self.registry.get_instance_for_request(instance_id)
+            except AmbiguousInstanceError as e:
+                return ErrorMessage.from_code(
+                    request_id,
+                    ErrorCode.AMBIGUOUS_INSTANCE,
+                    str(e),
+                ).to_dict()
 
             if not instance:
                 # ファイルベースでリロード中かチェック
@@ -484,7 +491,14 @@ class RelayServer:
             break
 
         # Re-check after waiting
-        instance = self.registry.get_instance_for_request(instance_id)
+        try:
+            instance = self.registry.get_instance_for_request(instance_id)
+        except AmbiguousInstanceError as e:
+            return ErrorMessage.from_code(
+                request_id,
+                ErrorCode.AMBIGUOUS_INSTANCE,
+                str(e),
+            ).to_dict()
         if not instance:
             return ErrorMessage.from_code(
                 request_id,

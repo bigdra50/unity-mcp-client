@@ -95,7 +95,7 @@ def main(
         typer.Option(
             "--instance",
             "-i",
-            help="Target Unity instance (project path)",
+            help="Target Unity instance (path, project name, or prefix)",
             envvar="UNITY_INSTANCE",
         ),
     ] = None,
@@ -128,7 +128,8 @@ def main(
     if timeout is not None:
         config.timeout = timeout
     if instance is not None:
-        config.instance = instance
+        resolved = Path(instance).resolve()
+        config.instance = str(resolved) if resolved.is_dir() else instance
 
     # Create client with retry callback for CLI feedback
     client = UnityClient(

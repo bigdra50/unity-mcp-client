@@ -21,6 +21,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+class AmbiguousInstanceError(Exception):
+    """Raised when instance specification matches multiple instances."""
+
+    def __init__(self, query: str, candidates: list[UnityInstance]) -> None:
+        self.query = query
+        self.candidates = candidates
+        names = ", ".join(f"{c.project_name} ({c.instance_id})" for c in candidates)
+        super().__init__(f"Ambiguous instance '{query}': matches {names}")
+
+
 # Queue configuration
 QUEUE_MAX_SIZE = 10
 QUEUE_ENABLED = False  # Default: disabled for simplicity
@@ -358,15 +369,63 @@ class InstanceRegistry:
             for instance in self._instances.values()
         ]
 
-    def get_instance_for_request(self, instance_id: str | None = None) -> UnityInstance | None:
-        """
-        Get the instance to handle a request.
+    def _resolve_instance(self, query: str) -> UnityInstance | None:
+        """Resolve an instance by 4-stage matching.
 
-        If instance_id is provided, returns that specific instance.
+        Priority:
+            1. instance_id exact match
+            2. project_name exact match
+            3. instance_id suffix match (path ends with query)
+            4. project_name prefix match
+
+        Each stage: 1 match → return, multiple → AmbiguousInstanceError, 0 → next stage.
+
+        Raises:
+            AmbiguousInstanceError: When multiple instances match at the same priority level.
+        """
+        # Stage 1: instance_id exact match
+        exact = self._instances.get(query)
+        if exact:
+            return exact
+
+        # Stage 2: project_name exact match
+        name_matches = [i for i in self._instances.values() if i.project_name == query]
+        if len(name_matches) == 1:
+            return name_matches[0]
+        if len(name_matches) > 1:
+            raise AmbiguousInstanceError(query, name_matches)
+
+        # Stage 3: instance_id suffix match (path ending)
+        suffix_matches = [
+            i
+            for i in self._instances.values()
+            if i.instance_id.endswith("/" + query) or i.instance_id.endswith("\\" + query)
+        ]
+        if len(suffix_matches) == 1:
+            return suffix_matches[0]
+        if len(suffix_matches) > 1:
+            raise AmbiguousInstanceError(query, suffix_matches)
+
+        # Stage 4: project_name prefix match
+        prefix_matches = [i for i in self._instances.values() if i.project_name.startswith(query)]
+        if len(prefix_matches) == 1:
+            return prefix_matches[0]
+        if len(prefix_matches) > 1:
+            raise AmbiguousInstanceError(query, prefix_matches)
+
+        return None
+
+    def get_instance_for_request(self, instance_id: str | None = None) -> UnityInstance | None:
+        """Get the instance to handle a request.
+
+        If instance_id is provided, resolves via 4-stage matching.
         Otherwise, returns the default instance.
+
+        Raises:
+            AmbiguousInstanceError: When instance_id matches multiple instances.
         """
         if instance_id:
-            return self.get(instance_id)
+            return self._resolve_instance(instance_id)
         return self.get_default()
 
     @property
