@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import typer
 
@@ -1072,10 +1072,6 @@ def uitree_dump(
             tree_text = result.get("tree", "")
             if tree_text:
                 console.print(tree_text)
-            else:
-                elements = result.get("elements", [])
-                for elem in elements:
-                    _print_tree_element(elem, indent=0)
         else:
             # Panel list
             panels = result.get("panels", [])
@@ -1093,28 +1089,6 @@ def uitree_dump(
     except UnityCLIError as e:
         print_error(e.message, e.code)
         raise typer.Exit(1) from None
-
-
-def _print_tree_element(elem: dict[str, Any], indent: int = 0) -> None:
-    """Print a single tree element with indentation."""
-    prefix = "  " * indent
-    type_name = elem.get("type", "VisualElement")
-    name = elem.get("name", "")
-    classes = elem.get("classes", [])
-    ref = elem.get("ref", "")
-
-    parts = [type_name]
-    if name:
-        parts.append(f'"{name}"')
-    for cls in classes:
-        parts.append(f".{cls}")
-    if ref:
-        parts.append(ref)
-
-    console.print(f"{prefix}{' '.join(parts)}")
-
-    for child in elem.get("children", []):
-        _print_tree_element(child, indent + 1)
 
 
 @uitree_app.command("query")

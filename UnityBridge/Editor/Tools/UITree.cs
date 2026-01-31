@@ -61,26 +61,35 @@ namespace UnityBridge.Tools
 
             var elementCount = 0;
 
-            if (format.Equals("json", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                var tree = BuildJsonTree(root, depth, 0, ref elementCount);
-                return new JObject
+                if (format.Equals("json", StringComparison.OrdinalIgnoreCase))
                 {
-                    ["tree"] = tree,
-                    ["elementCount"] = elementCount,
-                    ["panel"] = resolvedPanelName
-                };
+                    var tree = BuildJsonTree(root, depth, 0, ref elementCount);
+                    return new JObject
+                    {
+                        ["tree"] = tree,
+                        ["elementCount"] = elementCount,
+                        ["panel"] = resolvedPanelName
+                    };
+                }
+                else
+                {
+                    var sb = new StringBuilder();
+                    BuildTextTree(root, depth, 0, sb, ref elementCount);
+                    return new JObject
+                    {
+                        ["tree"] = sb.ToString().TrimEnd(),
+                        ["elementCount"] = elementCount,
+                        ["panel"] = resolvedPanelName
+                    };
+                }
             }
-            else
+            catch (Exception ex) when (ex is not ProtocolException)
             {
-                var sb = new StringBuilder();
-                BuildTextTree(root, depth, 0, sb, ref elementCount);
-                return new JObject
-                {
-                    ["tree"] = sb.ToString().TrimEnd(),
-                    ["elementCount"] = elementCount,
-                    ["panel"] = resolvedPanelName
-                };
+                throw new ProtocolException(
+                    ErrorCode.InternalError,
+                    $"Failed to traverse panel '{resolvedPanelName}': {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -114,15 +123,24 @@ namespace UnityBridge.Tools
 
             ClearRefs();
 
-            var matches = new JArray();
-            CollectMatches(root, typeFilter, nameFilter, classFilter, matches, "");
-
-            return new JObject
+            try
             {
-                ["matches"] = matches,
-                ["count"] = matches.Count,
-                ["panel"] = resolvedPanelName
-            };
+                var matches = new JArray();
+                CollectMatches(root, typeFilter, nameFilter, classFilter, matches, "");
+
+                return new JObject
+                {
+                    ["matches"] = matches,
+                    ["count"] = matches.Count,
+                    ["panel"] = resolvedPanelName
+                };
+            }
+            catch (Exception ex) when (ex is not ProtocolException)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InternalError,
+                    $"Failed to query panel '{resolvedPanelName}': {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private static JObject HandleInspect(JObject parameters)
