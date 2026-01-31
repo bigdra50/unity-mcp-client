@@ -73,6 +73,14 @@ u menu exec "Window/General/Console"      # Execute menu item
 u asset prefab <gameobject> <path>        # Create prefab
 u asset scriptable-object <type> <path>   # Create ScriptableObject
 u asset info <path>                       # Get asset info
+u asset deps <path>                       # Get dependencies
+u asset deps <path> --no-recursive        # Direct dependencies only
+u asset refs <path>                       # Get referencers
+
+# Package commands (via Relay)
+u package list                            # List installed packages
+u package add <name>@<version>            # Add package
+u package remove <name>                   # Remove package
 
 # UI Toolkit tree commands (Playwright MCP-like ref ID system)
 u uitree dump                            # List all panels

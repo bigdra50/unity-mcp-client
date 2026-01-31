@@ -242,10 +242,10 @@ user-invocable: true/false
 
 - [x] Phase 1: uverify 実装済み
 - [x] Phase 1: udebug 実装済み
-- [ ] Phase 1: uui 実装（uinspect からリネーム+拡張）
+- [x] Phase 1: uui 実装済み
 - [x] Phase 2: uscene
 - [x] Phase 2: unity-cli に component modify, gameobject active 追加
-- [ ] Phase 3: uasset
-- [ ] Phase 3: unity-csharp
-- [ ] Phase 3: unity-cli に package コマンド追加
+- [x] Phase 3: uasset
+- [x] Phase 3: unity-csharp
+- [x] Phase 3: unity-cli に package コマンド追加
 - [ ] Phase 4: ubuild, uperf（CLI 大規模拡充後）
