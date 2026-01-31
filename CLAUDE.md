@@ -82,6 +82,19 @@ u package list                            # List installed packages
 u package add <name>@<version>            # Add package
 u package remove <name>                   # Remove package
 
+# Build commands
+u build settings                          # Show build settings
+u build run                               # Build with current settings
+u build run --target Android --output ./Builds/Android
+u build scenes                            # List build scenes
+
+# Profiler commands
+u profiler status                         # Profiler state
+u profiler start                          # Start profiling
+u profiler stop                           # Stop profiling
+u profiler snapshot                       # Current frame data
+u profiler frames -c 30                   # Last 30 frames summary
+
 # UI Toolkit tree commands (Playwright MCP-like ref ID system)
 u uitree dump                            # List all panels
 u uitree dump -p "GameView"              # Dump tree as text

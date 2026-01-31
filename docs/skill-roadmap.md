@@ -248,4 +248,4 @@ user-invocable: true/false
 - [x] Phase 3: uasset
 - [x] Phase 3: unity-csharp
 - [x] Phase 3: unity-cli に package コマンド追加
-- [ ] Phase 4: ubuild, uperf（CLI 大規模拡充後）
+- [x] Phase 4: ubuild, uperf + build/profiler コマンド
