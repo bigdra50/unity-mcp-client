@@ -3,7 +3,7 @@
 [![CI](https://github.com/bigdra50/unity-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/bigdra50/unity-cli/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity)](https://unity.com/)
+[![Unity](https://img.shields.io/badge/Unity-2022.3%2B-black?logo=unity)](https://unity.com/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bigdra50/unity-cli)
 
 [日本語版](README.jp.md)
@@ -42,7 +42,7 @@ Key features:
 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - Python 3.11+
-- Unity 2021.3+
+- Unity 2022.3+
 - Unity Hub (for `open`/`editor` commands)
 
 ## Quick Start
