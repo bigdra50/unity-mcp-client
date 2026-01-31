@@ -26,9 +26,10 @@ namespace UnityBridge.Tools
                 "create" => Create(parameters),
                 "modify" => Modify(parameters),
                 "delete" => Delete(parameters),
+                "active" => SetActive(parameters),
                 _ => throw new ProtocolException(
                     ErrorCode.InvalidParams,
-                    $"Unknown action: {action}. Valid actions: find, create, modify, delete")
+                    $"Unknown action: {action}. Valid actions: find, create, modify, delete, active")
             };
         }
 
@@ -181,6 +182,38 @@ namespace UnityBridge.Tools
                     ["name"] = goName,
                     ["instanceID"] = goId
                 }
+            };
+        }
+
+        private static JObject SetActive(JObject parameters)
+        {
+            var targetGo = ResolveTarget(parameters);
+            if (targetGo == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "Target GameObject not found. Specify 'name' or 'id' parameter");
+            }
+
+            var activeToken = parameters["active"];
+            if (activeToken == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "'active' parameter is required (true/false)");
+            }
+
+            var active = activeToken.Value<bool>();
+
+            Undo.RecordObject(targetGo, "Set Active");
+            targetGo.SetActive(active);
+            EditorUtility.SetDirty(targetGo);
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+
+            return new JObject
+            {
+                ["message"] = $"GameObject '{targetGo.name}' active set to {active}",
+                ["gameObject"] = CreateGameObjectData(targetGo)
             };
         }
 

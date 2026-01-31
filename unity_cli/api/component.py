@@ -81,6 +81,38 @@ class ComponentAPI:
             params["targetId"] = target_id
         return self._conn.send_request("component", params)
 
+    def modify(
+        self,
+        component_type: str,
+        prop: str,
+        value: Any,
+        target: str | None = None,
+        target_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Modify a component property.
+
+        Args:
+            component_type: Component type name
+            prop: Property name to modify
+            value: New value for the property
+            target: Target GameObject name
+            target_id: Target GameObject instance ID
+
+        Returns:
+            Dictionary with modification result
+        """
+        params: dict[str, Any] = {
+            "action": "modify",
+            "type": component_type,
+            "prop": prop,
+            "value": value,
+        }
+        if target:
+            params["target"] = target
+        if target_id is not None:
+            params["targetId"] = target_id
+        return self._conn.send_request("component", params)
+
     def remove(
         self,
         component_type: str,

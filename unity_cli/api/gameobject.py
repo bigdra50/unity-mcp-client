@@ -99,6 +99,29 @@ class GameObjectAPI:
             params["scale"] = scale
         return self._conn.send_request("gameobject", params)
 
+    def set_active(
+        self,
+        active: bool,
+        name: str | None = None,
+        instance_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Set GameObject active state.
+
+        Args:
+            active: Whether to activate or deactivate
+            name: GameObject name
+            instance_id: Instance ID
+
+        Returns:
+            Dictionary with operation result
+        """
+        params: dict[str, Any] = {"action": "active", "active": active}
+        if name:
+            params["name"] = name
+        if instance_id is not None:
+            params["id"] = instance_id
+        return self._conn.send_request("gameobject", params)
+
     def delete(
         self,
         name: str | None = None,

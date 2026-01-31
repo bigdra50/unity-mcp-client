@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -253,6 +253,43 @@ def refresh(ctx: typer.Context) -> None:
     except UnityCLIError as e:
         print_error(e.message, e.code)
         raise typer.Exit(1) from None
+
+
+# =============================================================================
+# Value Parser
+# =============================================================================
+
+
+def _parse_cli_value(raw: str) -> int | float | bool | list[Any] | dict[str, Any] | str:
+    """Parse a CLI string value into an appropriate Python type.
+
+    Handles: int, float, bool, JSON array, JSON object, or plain string.
+    """
+    import json
+
+    if raw.lower() == "true":
+        return True
+    if raw.lower() == "false":
+        return False
+
+    try:
+        return int(raw)
+    except ValueError:
+        pass
+
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+
+    if raw.startswith(("[", "{")):
+        try:
+            parsed: list[Any] | dict[str, Any] = json.loads(raw)
+            return parsed
+        except json.JSONDecodeError:
+            pass
+
+    return raw
 
 
 # =============================================================================
@@ -676,6 +713,38 @@ def gameobject_modify(
         raise typer.Exit(1) from None
 
 
+@gameobject_app.command("active")
+def gameobject_active(
+    ctx: typer.Context,
+    name: Annotated[str | None, typer.Option("--name", "-n", help="GameObject name")] = None,
+    id: Annotated[int | None, typer.Option("--id", help="Instance ID")] = None,
+    active: Annotated[
+        bool,
+        typer.Option("--active/--no-active", help="Set active (true) or inactive (false)"),
+    ] = True,
+) -> None:
+    """Set GameObject active state."""
+    context: CLIContext = ctx.obj
+
+    if not name and id is None:
+        print_error("--name or --id required")
+        raise typer.Exit(1) from None
+
+    try:
+        result = context.client.gameobject.set_active(
+            active=active,
+            name=name,
+            instance_id=id,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", f"Active set to {active}"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
 @gameobject_app.command("delete")
 def gameobject_delete(
     ctx: typer.Context,
@@ -781,6 +850,53 @@ def component_add(
             print_json(result)
         else:
             print_success(result.get("message", "Component added"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@component_app.command("modify")
+def component_modify(
+    ctx: typer.Context,
+    component_type: Annotated[str, typer.Option("--type", "-T", help="Component type name")],
+    prop: Annotated[str, typer.Option("--prop", "-p", help="Property name to modify")],
+    value: Annotated[
+        str,
+        typer.Option("--value", "-v", help="New value (auto-parsed: numbers, booleans, JSON arrays/objects)"),
+    ],
+    target: Annotated[str | None, typer.Option("--target", "-t", help="Target GameObject name")] = None,
+    target_id: Annotated[int | None, typer.Option("--target-id", help="Target GameObject ID")] = None,
+) -> None:
+    """Modify a component property.
+
+    Values are auto-parsed: integers, floats, booleans (true/false),
+    JSON arrays ([1,2,3]), and JSON objects ({"r":1,"g":0,"b":0}) are
+    converted to their appropriate types. Everything else is sent as a string.
+
+    Examples:
+        u component modify -t "Main Camera" -T Camera --prop fieldOfView --value 90
+        u component modify -t "Cube" -T Transform --prop m_LocalPosition --value "[1,2,3]"
+    """
+    context: CLIContext = ctx.obj
+
+    if not target and target_id is None:
+        print_error("--target or --target-id required")
+        raise typer.Exit(1) from None
+
+    parsed_value = _parse_cli_value(value)
+
+    try:
+        result = context.client.component.modify(
+            target=target,
+            target_id=target_id,
+            component_type=component_type,
+            prop=prop,
+            value=parsed_value,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", "Property modified"))
     except UnityCLIError as e:
         print_error(e.message, e.code)
         raise typer.Exit(1) from None

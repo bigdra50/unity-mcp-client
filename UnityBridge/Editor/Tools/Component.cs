@@ -36,9 +36,10 @@ namespace UnityBridge.Tools
                 "inspect" => InspectComponent(parameters),
                 "add" => AddComponent(parameters),
                 "remove" => RemoveComponent(parameters),
+                "modify" => ModifyComponent(parameters),
                 _ => throw new ProtocolException(
                     ErrorCode.InvalidParams,
-                    $"Unknown action: {action}. Valid: list, inspect, add, remove")
+                    $"Unknown action: {action}. Valid: list, inspect, add, remove, modify")
             };
         }
 
@@ -277,6 +278,222 @@ namespace UnityBridge.Tools
                 ["gameObject"] = gameObject.name,
                 ["gameObjectId"] = gameObject.GetInstanceID()
             };
+        }
+
+        /// <summary>
+        /// Modifies a component property using SerializedObject/SerializedProperty.
+        /// </summary>
+        private static JObject ModifyComponent(JObject parameters)
+        {
+            var target = parameters["target"]?.Value<string>();
+            var targetId = parameters["targetId"]?.Value<int>();
+            var typeName = parameters["type"]?.Value<string>();
+            var propName = parameters["prop"]?.Value<string>();
+            var valueToken = parameters["value"];
+
+            if (string.IsNullOrEmpty(target) && targetId == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "Either 'target' (name) or 'targetId' (instanceID) is required");
+            }
+
+            if (string.IsNullOrEmpty(typeName))
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "'type' parameter is required");
+            }
+
+            if (string.IsNullOrEmpty(propName))
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "'prop' parameter is required");
+            }
+
+            if (valueToken == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    "'value' parameter is required");
+            }
+
+            var gameObject = FindGameObject(target, targetId);
+            if (gameObject == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"GameObject not found: {target ?? targetId?.ToString()}");
+            }
+
+            var componentType = FindType(typeName);
+            if (componentType == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Component type not found: {typeName}");
+            }
+
+            var component = gameObject.GetComponent(componentType);
+            if (component == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Component '{typeName}' not found on GameObject '{gameObject.name}'");
+            }
+
+            var so = new SerializedObject(component);
+            var sp = so.FindProperty(propName);
+            if (sp == null)
+            {
+                throw new ProtocolException(
+                    ErrorCode.InvalidParams,
+                    $"Property '{propName}' not found on component '{typeName}'");
+            }
+
+            SetSerializedPropertyValue(sp, valueToken);
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(gameObject);
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+
+            return new JObject
+            {
+                ["message"] = $"Modified {typeName}.{propName} on {gameObject.name}",
+                ["gameObject"] = gameObject.name,
+                ["gameObjectId"] = gameObject.GetInstanceID(),
+                ["property"] = propName,
+                ["propertyType"] = sp.propertyType.ToString()
+            };
+        }
+
+        /// <summary>
+        /// Sets a SerializedProperty value based on its type.
+        /// </summary>
+        private static void SetSerializedPropertyValue(SerializedProperty sp, JToken value)
+        {
+            switch (sp.propertyType)
+            {
+                case SerializedPropertyType.Integer:
+                    sp.intValue = value.Value<int>();
+                    break;
+                case SerializedPropertyType.Float:
+                    sp.floatValue = value.Value<float>();
+                    break;
+                case SerializedPropertyType.Boolean:
+                    sp.boolValue = value.Value<bool>();
+                    break;
+                case SerializedPropertyType.String:
+                    sp.stringValue = value.Value<string>();
+                    break;
+                case SerializedPropertyType.Enum:
+                    if (value.Type == JTokenType.Integer)
+                    {
+                        sp.enumValueIndex = value.Value<int>();
+                    }
+                    else
+                    {
+                        var enumName = value.Value<string>();
+                        var names = sp.enumNames;
+                        var index = Array.IndexOf(names, enumName);
+                        if (index < 0)
+                        {
+                            throw new ProtocolException(
+                                ErrorCode.InvalidParams,
+                                $"Invalid enum value: '{enumName}'. Valid values: {string.Join(", ", names)}");
+                        }
+                        sp.enumValueIndex = index;
+                    }
+                    break;
+                case SerializedPropertyType.Vector2:
+                    sp.vector2Value = ParseVector2FromToken(value);
+                    break;
+                case SerializedPropertyType.Vector3:
+                    sp.vector3Value = ParseVector3FromToken(value);
+                    break;
+                case SerializedPropertyType.Color:
+                    sp.colorValue = ParseColorFromToken(value);
+                    break;
+                case SerializedPropertyType.ObjectReference:
+                    if (value.Type == JTokenType.Null || (value.Type == JTokenType.String && string.IsNullOrEmpty(value.Value<string>())))
+                    {
+                        sp.objectReferenceValue = null;
+                    }
+                    else if (value.Type == JTokenType.Integer)
+                    {
+                        var obj = EditorUtility.InstanceIDToObject(value.Value<int>());
+                        sp.objectReferenceValue = obj;
+                    }
+                    else
+                    {
+                        throw new ProtocolException(
+                            ErrorCode.InvalidParams,
+                            "ObjectReference value must be null, empty string, or instanceID (integer)");
+                    }
+                    break;
+                default:
+                    throw new ProtocolException(
+                        ErrorCode.InvalidParams,
+                        $"Unsupported property type: {sp.propertyType}. Supported: Integer, Float, Boolean, String, Enum, Vector2, Vector3, Color, ObjectReference");
+            }
+        }
+
+        private static Vector2 ParseVector2FromToken(JToken token)
+        {
+            if (token is JArray arr && arr.Count >= 2)
+            {
+                return new Vector2(arr[0].Value<float>(), arr[1].Value<float>());
+            }
+            if (token is JObject obj)
+            {
+                return new Vector2(
+                    obj["x"]?.Value<float>() ?? 0f,
+                    obj["y"]?.Value<float>() ?? 0f);
+            }
+            throw new ProtocolException(
+                ErrorCode.InvalidParams,
+                "Vector2 value must be [x, y] array or {x, y} object");
+        }
+
+        private static Vector3 ParseVector3FromToken(JToken token)
+        {
+            if (token is JArray arr && arr.Count >= 3)
+            {
+                return new Vector3(arr[0].Value<float>(), arr[1].Value<float>(), arr[2].Value<float>());
+            }
+            if (token is JObject obj)
+            {
+                return new Vector3(
+                    obj["x"]?.Value<float>() ?? 0f,
+                    obj["y"]?.Value<float>() ?? 0f,
+                    obj["z"]?.Value<float>() ?? 0f);
+            }
+            throw new ProtocolException(
+                ErrorCode.InvalidParams,
+                "Vector3 value must be [x, y, z] array or {x, y, z} object");
+        }
+
+        private static Color ParseColorFromToken(JToken token)
+        {
+            if (token is JArray arr && arr.Count >= 3)
+            {
+                return new Color(
+                    arr[0].Value<float>(),
+                    arr[1].Value<float>(),
+                    arr[2].Value<float>(),
+                    arr.Count >= 4 ? arr[3].Value<float>() : 1f);
+            }
+            if (token is JObject obj)
+            {
+                return new Color(
+                    obj["r"]?.Value<float>() ?? 0f,
+                    obj["g"]?.Value<float>() ?? 0f,
+                    obj["b"]?.Value<float>() ?? 0f,
+                    obj["a"]?.Value<float>() ?? 1f);
+            }
+            throw new ProtocolException(
+                ErrorCode.InvalidParams,
+                "Color value must be [r, g, b, a?] array or {r, g, b, a?} object");
         }
 
         /// <summary>
