@@ -16,6 +16,7 @@ namespace UnityBridge
         private MessageType _statusMessageType = MessageType.None;
         private bool _showServerSettings;
         private string _customCommand = "";
+        private ConnectionStatus _lastStatus = ConnectionStatus.Disconnected;
 
         private enum MessageType
         {
@@ -34,21 +35,29 @@ namespace UnityBridge
 
         private void OnEnable()
         {
-            BridgeManager.Instance.StatusChanged += OnStatusChanged;
             RelayServerLauncher.Instance.ServerStarted += OnServerStateChanged;
             RelayServerLauncher.Instance.ServerStopped += OnServerStateChanged;
+            EditorApplication.update += PollConnectionStatus;
         }
 
         private void OnDisable()
         {
-            BridgeManager.Instance.StatusChanged -= OnStatusChanged;
             RelayServerLauncher.Instance.ServerStarted -= OnServerStateChanged;
             RelayServerLauncher.Instance.ServerStopped -= OnServerStateChanged;
+            EditorApplication.update -= PollConnectionStatus;
+        }
+
+        private void PollConnectionStatus()
+        {
+            var current = BridgeManager.Instance.Client?.Status ?? ConnectionStatus.Disconnected;
+            if (current == _lastStatus) return;
+
+            _lastStatus = current;
+            Repaint();
         }
 
         private async void OnServerStateChanged(object sender, EventArgs e)
         {
-            // If server stopped while connected, disconnect the client
             if (!RelayServerLauncher.Instance.IsRunning && BridgeManager.Instance.IsConnected)
             {
                 try
@@ -61,11 +70,6 @@ namespace UnityBridge
                 }
             }
 
-            Repaint();
-        }
-
-        private void OnStatusChanged(object sender, ConnectionStatusChangedEventArgs e)
-        {
             Repaint();
         }
 
@@ -206,11 +210,12 @@ namespace UnityBridge
 
             EditorGUILayout.Space(5);
 
-            var isConnected = BridgeManager.Instance.IsConnected;
+            var canConnect = _lastStatus == ConnectionStatus.Disconnected;
+            var canDisconnect = _lastStatus == ConnectionStatus.Connected;
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                using (new EditorGUI.DisabledGroupScope(isConnected))
+                using (new EditorGUI.DisabledGroupScope(!canConnect))
                 {
                     if (GUILayout.Button("Connect", GUILayout.Height(25)))
                     {
@@ -218,7 +223,7 @@ namespace UnityBridge
                     }
                 }
 
-                using (new EditorGUI.DisabledGroupScope(!isConnected))
+                using (new EditorGUI.DisabledGroupScope(!canDisconnect))
                 {
                     if (GUILayout.Button("Disconnect", GUILayout.Height(25)))
                     {
@@ -253,10 +258,7 @@ namespace UnityBridge
         {
             EditorGUILayout.LabelField("Status", EditorStyles.boldLabel);
 
-            var client = BridgeManager.Instance.Client;
-            var status = client?.Status ?? ConnectionStatus.Disconnected;
-
-            var statusColor = status switch
+            var statusColor = _lastStatus switch
             {
                 ConnectionStatus.Connected => new Color(0.3f, 0.8f, 0.3f),
                 ConnectionStatus.Connecting => new Color(0.9f, 0.7f, 0.2f),
@@ -267,10 +269,11 @@ namespace UnityBridge
             var originalColor = GUI.color;
             GUI.color = statusColor;
 
-            EditorGUILayout.LabelField($"● {status}", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField($"● {_lastStatus}", EditorStyles.boldLabel);
 
             GUI.color = originalColor;
 
+            var client = BridgeManager.Instance.Client;
             if (client != null)
             {
                 EditorGUILayout.LabelField($"Instance ID: {client.InstanceId}");
