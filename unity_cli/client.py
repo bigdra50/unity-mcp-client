@@ -37,6 +37,7 @@ from unity_cli.exceptions import (
 if TYPE_CHECKING:
     from unity_cli.api import (
         AssetAPI,
+        BuildAPI,
         ComponentAPI,
         ConsoleAPI,
         EditorAPI,
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
         MaterialAPI,
         MenuAPI,
         PackageAPI,
+        ProfilerAPI,
         SceneAPI,
         ScreenshotAPI,
         SelectionAPI,
@@ -582,6 +584,7 @@ class UnityClient:
         # Lazy import to avoid circular dependencies
         from unity_cli.api import (
             AssetAPI,
+            BuildAPI,
             ComponentAPI,
             ConsoleAPI,
             EditorAPI,
@@ -589,6 +592,7 @@ class UnityClient:
             MaterialAPI,
             MenuAPI,
             PackageAPI,
+            ProfilerAPI,
             SceneAPI,
             ScreenshotAPI,
             SelectionAPI,
@@ -598,6 +602,7 @@ class UnityClient:
 
         # API objects
         self.asset: AssetAPI = AssetAPI(self._conn)
+        self.build: BuildAPI = BuildAPI(self._conn)
         self.console: ConsoleAPI = ConsoleAPI(self._conn)
         self.editor: EditorAPI = EditorAPI(self._conn)
         self.gameobject: GameObjectAPI = GameObjectAPI(self._conn)
@@ -605,6 +610,7 @@ class UnityClient:
         self.component: ComponentAPI = ComponentAPI(self._conn)
         self.material: MaterialAPI = MaterialAPI(self._conn)
         self.package: PackageAPI = PackageAPI(self._conn)
+        self.profiler: ProfilerAPI = ProfilerAPI(self._conn)
         self.tests: TestAPI = TestAPI(self._conn)
         self.menu: MenuAPI = MenuAPI(self._conn)
         self.selection: SelectionAPI = SelectionAPI(self._conn)

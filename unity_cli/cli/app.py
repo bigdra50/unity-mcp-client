@@ -1138,6 +1138,128 @@ def asset_refs(
 
 
 # =============================================================================
+# Build Commands
+# =============================================================================
+
+build_app = typer.Typer(help="Build pipeline commands")
+app.add_typer(build_app, name="build")
+
+
+@build_app.command("settings")
+def build_settings(ctx: typer.Context) -> None:
+    """Show current build settings."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.build.settings()
+        if context.json_mode:
+            print_json(result)
+        else:
+            from rich.table import Table
+
+            table = Table(title="Build Settings")
+            table.add_column("Key", style="cyan")
+            table.add_column("Value")
+            table.add_row("Target", result.get("target", ""))
+            table.add_row("Target Group", result.get("targetGroup", ""))
+            table.add_row("Product Name", result.get("productName", ""))
+            table.add_row("Company Name", result.get("companyName", ""))
+            table.add_row("Bundle Version", result.get("bundleVersion", ""))
+            table.add_row("Scripting Backend", result.get("scriptingBackend", ""))
+            scenes = result.get("scenes", [])
+            table.add_row("Scenes", str(len(scenes)))
+            console.print(table)
+
+            if scenes:
+                console.print()
+                for i, s in enumerate(scenes):
+                    console.print(f"  {i}: {s}")
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@build_app.command("run")
+def build_run(
+    ctx: typer.Context,
+    target: Annotated[
+        str | None,
+        typer.Option("--target", "-t", help="BuildTarget (e.g., StandaloneWindows64, Android, WebGL)"),
+    ] = None,
+    output: Annotated[
+        str | None,
+        typer.Option("--output", "-o", help="Output path"),
+    ] = None,
+    scenes: Annotated[
+        list[str] | None,
+        typer.Option("--scene", "-s", help="Scene paths to include (repeatable)"),
+    ] = None,
+) -> None:
+    """Run a build."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.build.build(
+            target=target,
+            output_path=output,
+            scenes=scenes,
+        )
+        if context.json_mode:
+            print_json(result)
+        else:
+            build_result = result.get("result", "Unknown")
+            if build_result == "Succeeded":
+                print_success(f"Build succeeded: {result.get('outputPath', '')}")
+            else:
+                print_error(f"Build {build_result}", "BUILD_FAILED")
+
+            total_time = result.get("totalTime", 0)
+            total_size = result.get("totalSize", 0)
+            console.print(f"  Time: {total_time:.1f}s")
+            console.print(f"  Size: {total_size} bytes")
+            console.print(f"  Target: {result.get('target', '')}")
+            console.print(f"  Errors: {result.get('totalErrors', 0)}")
+            console.print(f"  Warnings: {result.get('totalWarnings', 0)}")
+
+            messages = result.get("messages", [])
+            if messages:
+                console.print()
+                for msg in messages:
+                    style = "red" if msg.get("type") == "Error" else "yellow"
+                    console.print(f"  [{style}]{msg.get('type')}: {msg.get('content')}[/{style}]")
+
+            if build_result != "Succeeded":
+                raise typer.Exit(1) from None
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@build_app.command("scenes")
+def build_scenes(ctx: typer.Context) -> None:
+    """List build scenes."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.build.scenes()
+        if context.json_mode:
+            print_json(result)
+        else:
+            from rich.table import Table
+
+            scenes_list = result.get("scenes", [])
+            table = Table(title=f"Build Scenes ({len(scenes_list)})")
+            table.add_column("#", style="dim", width=3)
+            table.add_column("Path", style="cyan")
+            table.add_column("Enabled")
+            table.add_column("GUID", style="dim")
+            for i, s in enumerate(scenes_list):
+                enabled = "[green]yes[/green]" if s.get("enabled") else "[red]no[/red]"
+                table.add_row(str(i), s.get("path", ""), enabled, s.get("guid", ""))
+            console.print(table)
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
 # Package Commands (via Relay)
 # =============================================================================
 
@@ -1208,6 +1330,155 @@ def package_remove(
             print_json(result)
         else:
             print_success(result.get("message", f"Package removed: {name}"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
+# Profiler Commands
+# =============================================================================
+
+profiler_app = typer.Typer(help="Profiler commands")
+app.add_typer(profiler_app, name="profiler")
+
+
+@profiler_app.command("status")
+def profiler_status(ctx: typer.Context) -> None:
+    """Get profiler status."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.profiler.status()
+        if context.json_mode:
+            print_json(result)
+        else:
+            enabled = result.get("enabled", False)
+            status_text = "[green]running[/green]" if enabled else "[dim]stopped[/dim]"
+            console.print(f"Profiler: {status_text}")
+            console.print(f"Frame range: {result.get('firstFrameIndex', -1)} - {result.get('lastFrameIndex', -1)}")
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@profiler_app.command("start")
+def profiler_start(ctx: typer.Context) -> None:
+    """Start profiling."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.profiler.start()
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", "Profiler started"))
+            warning = result.get("warning")
+            if warning:
+                err_console.print(f"[yellow]{warning}[/yellow]")
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@profiler_app.command("stop")
+def profiler_stop(ctx: typer.Context) -> None:
+    """Stop profiling."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.profiler.stop()
+        if context.json_mode:
+            print_json(result)
+        else:
+            print_success(result.get("message", "Profiler stopped"))
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@profiler_app.command("snapshot")
+def profiler_snapshot(ctx: typer.Context) -> None:
+    """Get current frame profiler data."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.profiler.snapshot()
+        if context.json_mode:
+            print_json(result)
+        else:
+            from rich.table import Table
+
+            table = Table(title=f"Frame {result.get('frameIndex', '?')}")
+            table.add_column("Metric")
+            table.add_column("Value", justify="right")
+
+            display_keys = [
+                ("fps", "FPS"),
+                ("cpuFrameTimeMs", "CPU Frame Time"),
+                ("cpuRenderThreadTimeMs", "CPU Render Thread"),
+                ("gpuFrameTimeMs", "GPU Frame Time"),
+                ("batches", "Batches"),
+                ("drawCalls", "Draw Calls"),
+                ("triangles", "Triangles"),
+                ("vertices", "Vertices"),
+                ("setPassCalls", "SetPass Calls"),
+                ("gcAllocCount", "GC Alloc Count"),
+                ("gcAllocBytes", "GC Alloc Bytes"),
+            ]
+
+            for key, label in display_keys:
+                value = result.get(key)
+                if value is not None:
+                    table.add_row(label, str(value))
+
+            console.print(table)
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@profiler_app.command("frames")
+def profiler_frames(
+    ctx: typer.Context,
+    count: Annotated[
+        int,
+        typer.Option("--count", "-c", help="Number of frames to retrieve"),
+    ] = 10,
+) -> None:
+    """Get recent N frames summary."""
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.profiler.frames(count=count)
+        if context.json_mode:
+            print_json(result)
+        else:
+            frames = result.get("frames", [])
+            if not frames:
+                console.print("[dim]No profiler frames available[/dim]")
+                return
+
+            from rich.table import Table
+
+            table = Table(
+                title=f"Profiler Frames ({result.get('firstFrameIndex', '?')}-{result.get('lastFrameIndex', '?')})"
+            )
+            table.add_column("Frame", justify="right")
+            table.add_column("FPS", justify="right")
+            table.add_column("CPU (ms)", justify="right")
+            table.add_column("GPU (ms)", justify="right")
+            table.add_column("Batches", justify="right")
+            table.add_column("Draw Calls", justify="right")
+            table.add_column("GC Alloc", justify="right")
+
+            for frame in frames:
+                table.add_row(
+                    str(frame.get("frameIndex", "")),
+                    str(frame.get("fps", "-")),
+                    str(frame.get("cpuFrameTimeMs", "-")),
+                    str(frame.get("gpuFrameTimeMs", "-")),
+                    str(frame.get("batches", "-")),
+                    str(frame.get("drawCalls", "-")),
+                    str(frame.get("gcAllocBytes", "-")),
+                )
+
+            console.print(table)
     except UnityCLIError as e:
         print_error(e.message, e.code)
         raise typer.Exit(1) from None
