@@ -17,4 +17,5 @@ venv/
 uv.lock
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/plugins/

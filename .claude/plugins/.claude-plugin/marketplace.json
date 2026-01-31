@@ -1,0 +1,14 @@
+{
+  "name": "local",
+  "owner": {
+    "name": "bigdra50"
+  },
+  "description": "Local plugins for unity-cli",
+  "plugins": [
+    {
+      "name": "unity-workflow",
+      "description": "Unity development workflow automation: build verification, debug investigation, UI Toolkit inspection",
+      "source": "./unity-workflow"
+    }
+  ]
+}

@@ -34,6 +34,7 @@ u menu context "DoSomething" -t "/Player"
 - MenuItem / ContextMenu の実行に対応
 - 複数 Unity インスタンスの同時制御
 - ドメインリロード耐性（自動再接続）
+- UI Toolkit VisualElementツリーの検査（dump, query, inspect + ref ID方式）
 - プロジェクトを適切なバージョンで開く（Unity Hub連携）
 - プロジェクト情報取得（Relay Server不要）
 
@@ -322,6 +323,41 @@ u asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
 
 # アセット情報
 u asset info "Assets/Data/Config.asset"
+```
+
+### UI Toolkit ツリー検査
+
+EditorパネルとRuntimeパネルのUI Toolkit VisualElementツリーを検査する。Playwright MCP風のref ID方式で、ツリーをダンプしてからref IDで個別要素を詳細取得するフローが可能。
+
+```bash
+# パネル一覧（Editor + Runtime）
+u uitree dump
+
+# 指定パネルのVisualElementツリーをダンプ
+u uitree dump -p "Toolbar"
+
+# 深度制限
+u uitree dump -p "Toolbar" -d 3
+
+# JSON出力
+u uitree dump -p "Toolbar" -o json
+
+# type/name/USSクラスで検索（AND条件）
+u uitree query -p "PanelSettings" -t Button
+u uitree query -p "PanelSettings" -n "StartBtn"
+u uitree query -p "PanelSettings" -c "primary-button"
+
+# ref IDで要素詳細を取得（dump/query時に割り当て）
+u uitree inspect ref_3
+
+# resolvedStyle（レイアウト、色、フォント、マージン等）を含める
+u uitree inspect ref_3 --style
+
+# 直接の子要素情報を含める
+u uitree inspect ref_3 --children
+
+# パネル + 名前で指定（事前のdump不要）
+u uitree inspect -p "Toolbar" -n "Play"
 ```
 
 ### 設定

@@ -1022,6 +1022,294 @@ def asset_refs(
 
 
 # =============================================================================
+# UI Tree Commands
+# =============================================================================
+
+uitree_app = typer.Typer(help="UI Toolkit tree commands")
+app.add_typer(uitree_app, name="uitree")
+
+
+@uitree_app.command("dump")
+def uitree_dump(
+    ctx: typer.Context,
+    panel: Annotated[
+        str | None,
+        typer.Option("--panel", "-p", help="Panel name (omit to list panels)"),
+    ] = None,
+    depth: Annotated[
+        int,
+        typer.Option("--depth", "-d", help="Max tree depth (-1 = unlimited)"),
+    ] = -1,
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format: text or json"),
+    ] = "text",
+) -> None:
+    """Dump UI tree or list panels.
+
+    Examples:
+        u uitree dump                              # List panels
+        u uitree dump -p "GameView"                # Dump tree as text
+        u uitree dump -p "GameView" -o json        # Dump tree as JSON
+        u uitree dump -p "GameView" -d 3           # Limit depth
+    """
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.uitree.dump(
+            panel=panel,
+            depth=depth,
+            format=output_format,
+        )
+
+        if context.json_mode or output_format == "json":
+            print_json(result, None)
+        elif panel:
+            # Tree output for a specific panel
+            panel_name = result.get("panel", panel)
+            element_count = result.get("elementCount", 0)
+            console.print(f"Panel: {panel_name} ({element_count} elements)\n")
+
+            tree_text = result.get("tree", "")
+            if tree_text:
+                console.print(tree_text)
+        else:
+            # Panel list
+            panels = result.get("panels", [])
+            if not panels:
+                console.print("[dim]No panels found[/dim]")
+                return
+
+            console.print("Panels:")
+            for p in panels:
+                ctx_type = p.get("contextType", "")
+                p_name = p.get("name", "")
+                p_count = p.get("elementCount", 0)
+                console.print(f"  [{ctx_type}] {p_name} ({p_count} elements)")
+
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@uitree_app.command("query")
+def uitree_query(
+    ctx: typer.Context,
+    panel: Annotated[
+        str,
+        typer.Option("--panel", "-p", help="Panel name"),
+    ],
+    type_filter: Annotated[
+        str | None,
+        typer.Option("--type", "-t", help="Element type filter"),
+    ] = None,
+    name_filter: Annotated[
+        str | None,
+        typer.Option("--name", "-n", help="Element name filter"),
+    ] = None,
+    class_filter: Annotated[
+        str | None,
+        typer.Option("--class", "-c", help="USS class filter"),
+    ] = None,
+) -> None:
+    """Query UI elements by type, name, or class.
+
+    Filters are combined as AND conditions.
+
+    Examples:
+        u uitree query -p "GameView" -t Button
+        u uitree query -p "GameView" -n "StartBtn"
+        u uitree query -p "GameView" -c "primary-button"
+        u uitree query -p "GameView" -t Button -c "primary-button"
+    """
+    context: CLIContext = ctx.obj
+    try:
+        result = context.client.uitree.query(
+            panel=panel,
+            type=type_filter,
+            name=name_filter,
+            class_name=class_filter,
+        )
+
+        if context.json_mode:
+            print_json(result, None)
+        else:
+            matches = result.get("matches", [])
+            count = result.get("count", len(matches))
+            console.print(f'Found {count} elements in "{panel}":\n')
+
+            if not matches:
+                console.print("[dim]No matching elements[/dim]")
+                return
+
+            for elem in matches:
+                ref = elem.get("ref", "")
+                type_name = elem.get("type", "VisualElement")
+                elem_name = elem.get("name", "")
+                classes = elem.get("classes", [])
+
+                parts = [f"  {ref}", type_name]
+                if elem_name:
+                    parts.append(f'"{elem_name}"')
+                for cls in classes:
+                    parts.append(f".{cls}")
+                console.print(" ".join(parts))
+
+                path = elem.get("path", "")
+                if path:
+                    console.print(f"    path: {path}", style="dim")
+
+                layout = elem.get("layout")
+                if layout:
+                    x = layout.get("x", 0)
+                    y = layout.get("y", 0)
+                    w = layout.get("width", 0)
+                    h = layout.get("height", 0)
+                    console.print(f"    layout: ({x}, {y}, {w}x{h})", style="dim")
+
+                console.print()
+
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+@uitree_app.command("inspect")
+def uitree_inspect(
+    ctx: typer.Context,
+    ref: Annotated[
+        str | None,
+        typer.Argument(help="Element reference ID (e.g., ref_3)"),
+    ] = None,
+    panel: Annotated[
+        str | None,
+        typer.Option("--panel", "-p", help="Panel name"),
+    ] = None,
+    name: Annotated[
+        str | None,
+        typer.Option("--name", "-n", help="Element name"),
+    ] = None,
+    style: Annotated[
+        bool,
+        typer.Option("--style", "-s", help="Include resolvedStyle"),
+    ] = False,
+    children: Annotated[
+        bool,
+        typer.Option("--children", help="Include children info"),
+    ] = False,
+) -> None:
+    """Inspect a specific UI element.
+
+    Specify element by ref ID or by panel + name.
+
+    Examples:
+        u uitree inspect ref_3
+        u uitree inspect -p "GameView" -n "StartBtn"
+        u uitree inspect ref_3 --style
+        u uitree inspect ref_3 --children
+    """
+    context: CLIContext = ctx.obj
+
+    if not ref and not (panel and name):
+        print_error("ref argument or --panel + --name required")
+        raise typer.Exit(1) from None
+
+    try:
+        result = context.client.uitree.inspect(
+            ref=ref,
+            panel=panel,
+            name=name,
+            include_style=style,
+            include_children=children,
+        )
+
+        if context.json_mode:
+            print_json(result, None)
+        else:
+            elem = result
+
+            # Header: ref Type "name"
+            elem_ref = elem.get("ref", "")
+            elem_type = elem.get("type", "VisualElement")
+            elem_name = elem.get("name", "")
+            header_parts = []
+            if elem_ref:
+                header_parts.append(elem_ref)
+            header_parts.append(elem_type)
+            if elem_name:
+                header_parts.append(f'"{elem_name}"')
+            console.print(" ".join(header_parts))
+
+            # Classes
+            classes = elem.get("classes", [])
+            if classes:
+                console.print(f"  classes: {' '.join('.' + c for c in classes)}")
+
+            # Properties
+            if "visible" in elem:
+                console.print(f"  visible: {elem['visible']}")
+            if "enabledSelf" in elem:
+                hierarchy = elem.get("enabledInHierarchy")
+                if hierarchy is not None:
+                    console.print(f"  enabled: {elem['enabledSelf']} (hierarchy: {hierarchy})")
+                else:
+                    console.print(f"  enabled: {elem['enabledSelf']}")
+            if "focusable" in elem:
+                console.print(f"  focusable: {elem['focusable']}")
+
+            # Layout
+            layout = elem.get("layout")
+            if layout:
+                x = layout.get("x", 0)
+                y = layout.get("y", 0)
+                w = layout.get("width", 0)
+                h = layout.get("height", 0)
+                console.print(f"  layout: ({x}, {y}, {w}x{h})")
+
+            # WorldBound
+            world_bound = elem.get("worldBound")
+            if world_bound:
+                x = world_bound.get("x", 0)
+                y = world_bound.get("y", 0)
+                w = world_bound.get("width", 0)
+                h = world_bound.get("height", 0)
+                console.print(f"  worldBound: ({x}, {y}, {w}x{h})")
+
+            # Child count
+            child_count = elem.get("childCount")
+            if child_count is not None:
+                console.print(f"  childCount: {child_count}")
+
+            # Path
+            path = elem.get("path", "")
+            if path:
+                console.print(f"  path: {path}")
+
+            # Style section
+            style_data = elem.get("resolvedStyle")
+            if style_data and isinstance(style_data, dict):
+                console.print("\n  [resolvedStyle]")
+                for k, v in style_data.items():
+                    console.print(f"  {k}: {v}")
+
+            # Children section
+            children_data = elem.get("children")
+            if children_data and isinstance(children_data, list):
+                console.print("\n  [children]")
+                for child in children_data:
+                    child_ref = child.get("ref", "")
+                    child_type = child.get("type", "VisualElement")
+                    child_name = child.get("name", "")
+                    parts = ["  " + child_ref, child_type]
+                    if child_name:
+                        parts.append(f'"{child_name}"')
+                    console.print(" ".join(parts))
+
+    except UnityCLIError as e:
+        print_error(e.message, e.code)
+        raise typer.Exit(1) from None
+
+
+# =============================================================================
 # Config Commands
 # =============================================================================
 

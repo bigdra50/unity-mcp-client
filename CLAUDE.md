@@ -71,6 +71,18 @@ u asset prefab <gameobject> <path>        # Create prefab
 u asset scriptable-object <type> <path>   # Create ScriptableObject
 u asset info <path>                       # Get asset info
 
+# UI Toolkit tree commands (Playwright MCP-like ref ID system)
+u uitree dump                            # List all panels
+u uitree dump -p "GameView"              # Dump tree as text
+u uitree dump -p "GameView" -o json      # Dump tree as JSON
+u uitree dump -p "GameView" -d 3         # Limit depth
+u uitree query -p "GameView" -t Button   # Query by type
+u uitree query -p "GameView" -n "StartBtn"  # Query by name
+u uitree query -p "GameView" -c "primary-button"  # Query by class
+u uitree inspect ref_3                   # Inspect by ref ID
+u uitree inspect ref_3 --style           # Include resolvedStyle
+u uitree inspect ref_3 --children        # Include children
+
 # Standalone tools (no Relay required)
 u config show                             # Show configuration
 u project info                            # Project info
@@ -173,7 +185,8 @@ UnityBridge/
 │       ├── Refresh.cs        # Asset database refresh
 │       ├── Scene.cs          # Scene management
 │       ├── Screenshot.cs     # Screenshot capture
-│       └── Tests.cs          # Test runner
+│       ├── Tests.cs          # Test runner
+│       └── UITree.cs         # UI Toolkit tree inspection
 └── package.json
 ```
 

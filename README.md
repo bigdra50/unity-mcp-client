@@ -34,6 +34,7 @@ Key features:
 - Support for MenuItem / ContextMenu execution
 - Simultaneous control of multiple Unity instances
 - Domain reload resilience (auto-reconnection)
+- UI Toolkit VisualElement tree inspection (dump, query, inspect with ref IDs)
 - Open projects with appropriate version (Unity Hub integration)
 - Project information retrieval (no Relay Server required)
 
@@ -324,6 +325,41 @@ u asset scriptable-object -T "GameConfig" -p "Assets/Data/Config.asset"
 
 # Asset info
 u asset info "Assets/Data/Config.asset"
+```
+
+### UI Toolkit Tree Inspection
+
+Inspect UI Toolkit VisualElement trees across Editor and Runtime panels. Uses a ref ID system (similar to Playwright MCP) for interactive debugging: dump the tree, then inspect individual elements by ref ID.
+
+```bash
+# List all panels (Editor + Runtime)
+u uitree dump
+
+# Dump a panel's VisualElement tree
+u uitree dump -p "Toolbar"
+
+# Limit depth
+u uitree dump -p "Toolbar" -d 3
+
+# JSON output
+u uitree dump -p "Toolbar" -o json
+
+# Query elements by type, name, or USS class (AND conditions)
+u uitree query -p "PanelSettings" -t Button
+u uitree query -p "PanelSettings" -n "StartBtn"
+u uitree query -p "PanelSettings" -c "primary-button"
+
+# Inspect element by ref ID (assigned during dump/query)
+u uitree inspect ref_3
+
+# Include resolvedStyle (layout, colors, font, margins, etc.)
+u uitree inspect ref_3 --style
+
+# Include direct children info
+u uitree inspect ref_3 --children
+
+# Inspect by panel + name (without prior dump)
+u uitree inspect -p "Toolbar" -n "Play"
 ```
 
 ### Configuration

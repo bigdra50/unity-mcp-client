@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         ScreenshotAPI,
         SelectionAPI,
         TestAPI,
+        UITreeAPI,
     )
 
 
@@ -587,6 +588,7 @@ class UnityClient:
             ScreenshotAPI,
             SelectionAPI,
             TestAPI,
+            UITreeAPI,
         )
 
         # API objects
@@ -601,6 +603,7 @@ class UnityClient:
         self.menu: MenuAPI = MenuAPI(self._conn)
         self.selection: SelectionAPI = SelectionAPI(self._conn)
         self.screenshot: ScreenshotAPI = ScreenshotAPI(self._conn)
+        self.uitree: UITreeAPI = UITreeAPI(self._conn)
 
     def list_instances(self) -> list[dict[str, Any]]:
         """List all connected Unity instances.

@@ -1,0 +1,9 @@
+{
+  "name": "unity-workflow",
+  "version": "1.0.0",
+  "description": "Unity development workflow automation via unity-cli",
+  "author": {
+    "name": "bigdra50"
+  },
+  "repository": "https://github.com/bigdra50/unity-cli"
+}
