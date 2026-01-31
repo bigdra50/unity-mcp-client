@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.Requests;
 
 namespace UnityBridge.Tools
 {
