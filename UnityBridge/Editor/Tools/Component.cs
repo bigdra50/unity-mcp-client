@@ -347,9 +347,21 @@ namespace UnityBridge.Tools
             var sp = so.FindProperty(propName);
             if (sp == null)
             {
+                // List available property names for discoverability
+                var availableProps = new List<string>();
+                var iter = so.GetIterator();
+                if (iter.NextVisible(true))
+                {
+                    do
+                    {
+                        availableProps.Add(iter.name);
+                    } while (iter.NextVisible(false));
+                }
+
                 throw new ProtocolException(
                     ErrorCode.InvalidParams,
-                    $"Property '{propName}' not found on component '{typeName}'");
+                    $"Property '{propName}' not found on component '{typeName}'. " +
+                    $"Available: {string.Join(", ", availableProps)}");
             }
 
             SetSerializedPropertyValue(sp, valueToken);
