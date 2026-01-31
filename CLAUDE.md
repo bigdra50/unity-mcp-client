@@ -191,7 +191,8 @@ UnityBridge/
 │   ├── CommandDispatcher.cs  # [BridgeTool] attribute handler
 │   ├── BridgeReloadHandler.cs # Domain reload recovery
 │   ├── BridgeManager.cs      # Singleton manager
-│   ├── BridgeEditorWindow.cs # UI
+│   ├── BridgeEditorWindow.cs # Editor window UI
+│   ├── BridgeToolbar.cs      # Toolbar connection indicator
 │   ├── RelayServerLauncher.cs # uvx server launch
 │   ├── Helpers/
 │   │   ├── BridgeJobStateStore.cs # Job state persistence

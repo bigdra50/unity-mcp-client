@@ -62,6 +62,8 @@ In Unity Editor, open `Window > Unity Bridge`:
 1. Click Start Server (launches Relay Server)
 2. Click Connect (Unity → Relay connection)
 
+The toolbar indicator (right side) shows connection status and allows toggle via click.
+
 ### 3. CLI Operations
 
 ```bash

@@ -62,6 +62,8 @@ Unity Editorで `Window > Unity Bridge` を開き:
 1. Start Server をクリック（Relay Server起動）
 2. Connect をクリック（Unity → Relay接続）
 
+ツールバー右側のインジケータで接続状態を確認でき、クリックで接続/切断をトグルできます。
+
 ### 3. CLIで操作
 
 ```bash
