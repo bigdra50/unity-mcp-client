@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-using UnityEngine.Profiling;
+using Profiling = UnityEngine.Profiling;
 
 namespace UnityBridge.Tools
 {
@@ -136,6 +134,21 @@ namespace UnityBridge.Tools
             };
         }
 
+        private static readonly (string name, string key, Profiling.ProfilerArea area)[] Stats =
+        {
+            ("FPS", "fps", Profiling.ProfilerArea.CPU),
+            ("CPU Main Thread Frame Time", "cpuFrameTimeMs", Profiling.ProfilerArea.CPU),
+            ("CPU Render Thread Frame Time", "cpuRenderThreadTimeMs", Profiling.ProfilerArea.CPU),
+            ("GPU Frame Time", "gpuFrameTimeMs", Profiling.ProfilerArea.GPU),
+            ("Batches", "batches", Profiling.ProfilerArea.Rendering),
+            ("Draw Calls", "drawCalls", Profiling.ProfilerArea.Rendering),
+            ("Triangles", "triangles", Profiling.ProfilerArea.Rendering),
+            ("Vertices", "vertices", Profiling.ProfilerArea.Rendering),
+            ("SetPass Calls", "setPassCalls", Profiling.ProfilerArea.Rendering),
+            ("GC Allocation In Frame Count", "gcAllocCount", Profiling.ProfilerArea.Memory),
+            ("GC Allocated In Frame", "gcAllocBytes", Profiling.ProfilerArea.Memory),
+        };
+
         private static JObject BuildFrameData(int frameIndex)
         {
             var result = new JObject
@@ -143,33 +156,22 @@ namespace UnityBridge.Tools
                 ["frameIndex"] = frameIndex
             };
 
-            TryAddStat(result, "fps", frameIndex, ProfilerArea.CPU, "FPS");
-            TryAddStat(result, "cpuFrameTimeMs", frameIndex, ProfilerArea.CPU, "CPU Main Thread Frame Time");
-            TryAddStat(result, "cpuRenderThreadTimeMs", frameIndex, ProfilerArea.CPU, "CPU Render Thread Frame Time");
-            TryAddStat(result, "gpuFrameTimeMs", frameIndex, ProfilerArea.GPU, "GPU Frame Time");
-            TryAddStat(result, "batches", frameIndex, ProfilerArea.Rendering, "Batches");
-            TryAddStat(result, "drawCalls", frameIndex, ProfilerArea.Rendering, "Draw Calls");
-            TryAddStat(result, "triangles", frameIndex, ProfilerArea.Rendering, "Triangles");
-            TryAddStat(result, "vertices", frameIndex, ProfilerArea.Rendering, "Vertices");
-            TryAddStat(result, "setPassCalls", frameIndex, ProfilerArea.Rendering, "SetPass Calls");
-            TryAddStat(result, "gcAllocCount", frameIndex, ProfilerArea.Memory, "GC Allocation In Frame Count");
-            TryAddStat(result, "gcAllocBytes", frameIndex, ProfilerArea.Memory, "GC Allocated In Frame");
+            foreach (var (name, key, area) in Stats)
+            {
+                try
+                {
+                    var id = ProfilerDriver.GetStatisticsIdentifierForArea(area, name);
+                    var value = ProfilerDriver.GetFormattedStatisticsValue(frameIndex, id);
+                    if (!string.IsNullOrEmpty(value))
+                        result[key] = value;
+                }
+                catch
+                {
+                    // stat not available in this Unity version
+                }
+            }
 
             return result;
-        }
-
-        private static void TryAddStat(JObject result, string key, int frameIndex, ProfilerArea area, string statName)
-        {
-            try
-            {
-                var value = ProfilerDriver.GetFormattedStatisticsValue(frameIndex, (int)area, statName);
-                if (!string.IsNullOrEmpty(value))
-                    result[key] = value;
-            }
-            catch
-            {
-                // stat not available in this Unity version
-            }
         }
     }
 }
